@@ -8,6 +8,11 @@ on:
     tags: [ 'v*' ]
   workflow_dispatch:
 
+env:
+  # Opt into Node.js 24 now so the workflow keeps running after GitHub's
+  # default flips on 2026-06-02. (Deprecation notice in the runner logs.)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   build-windows-exe:
     runs-on: windows-latest
