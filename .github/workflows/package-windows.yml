@@ -13,6 +13,11 @@ env:
   # default flips on 2026-06-02. (Deprecation notice in the runner logs.)
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
+# Default GITHUB_TOKEN is read-only — softprops/action-gh-release needs
+# write access to create the Release and upload assets.
+permissions:
+  contents: write
+
 jobs:
   build-windows-exe:
     runs-on: windows-latest
