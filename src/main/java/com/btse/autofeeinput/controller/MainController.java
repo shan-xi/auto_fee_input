@@ -3,6 +3,8 @@ package com.btse.autofeeinput.controller;
 import com.btse.autofeeinput.model.SheetData;
 import com.btse.autofeeinput.service.CaptchaUi;
 import com.btse.autofeeinput.service.ExcelService;
+import com.btse.autofeeinput.service.OcrConfig;
+import com.btse.autofeeinput.service.OcrService;
 import com.btse.autofeeinput.service.ProcessingService;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -40,6 +42,7 @@ public class MainController {
     @FXML private TextArea logArea;
 
     private final ExcelService excelService = new ExcelService();
+    private OcrService ocrService;
     private SheetData sheetData;
     private File sourceFile;
     private Thread workerThread;
@@ -53,6 +56,14 @@ public class MainController {
 
     @FXML
     public void initialize() {
+        try {
+            ocrService = new OcrService(OcrConfig.load(),
+                    msg -> Platform.runLater(() -> log(msg)));
+        } catch (Throwable t) {
+            log("OCR init failed (manual entry only): " + t);
+            t.printStackTrace();
+            ocrService = null;
+        }
         queryColumnCombo.disableProperty().bind(sheetTable.itemsProperty().isNull());
         feeColumnCombo.disableProperty().bind(sheetTable.itemsProperty().isNull());
 
@@ -304,7 +315,7 @@ public class MainController {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/captcha.fxml"));
                 Parent root = loader.load();
                 CaptchaController controller = loader.getController();
-                controller.init(keyword, initialImage, refresher);
+                controller.init(keyword, initialImage, refresher, ocrService);
 
                 Stage stage = new Stage();
                 stage.initModality(Modality.NONE);
