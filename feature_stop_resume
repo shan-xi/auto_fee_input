@@ -1,0 +1,2 @@
+when at pop up window, press stop, will make current row fail
+stop should just stop dont input fail data to excel, and when press resume, should continue in current row, not next

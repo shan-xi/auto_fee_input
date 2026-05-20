@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.btse.autofeeinput.controller.CaptchaController"
+      spacing="10" alignment="CENTER" prefWidth="380" prefHeight="280">
+    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+    <Label fx:id="keywordLabel" text="" wrapText="true" style="-fx-font-weight:bold;"/>
+    <ImageView fx:id="captchaImage" preserveRatio="true" fitHeight="80"/>
+    <Label text="驗證碼不分大小寫，輸入完按 Enter 送出" wrapText="true"
+           style="-fx-text-fill:#6b7280; -fx-font-size:12px;"/>
+    <Label fx:id="errorLabel" text="" wrapText="true" style="-fx-text-fill: #e53935;"/>
+    <TextField fx:id="captchaField" promptText="Enter captcha (case-insensitive)" prefWidth="220" onAction="#onSend"/>
+    <HBox spacing="10" alignment="CENTER">
+        <Button text="Refresh" onAction="#onRefresh"/>
+        <Button fx:id="sendBtn" text="Send" defaultButton="true" onAction="#onSend"/>
+        <Button text="Cancel Row" cancelButton="true" onAction="#onCancel"/>
+    </HBox>
+</VBox>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.btse.autofeeinput.controller.MainController"
+            prefWidth="1200" prefHeight="800" styleClass="root-pane">
+
+    <top>
+        <VBox spacing="8" styleClass="section,manipulate-section">
+            <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+            <Label text="1. Manipulate" styleClass="section-title"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button fx:id="uploadBtn" text="Upload File" onAction="#onUpload"/>
+                <Label fx:id="filePathLabel" text="No file" styleClass="muted"/>
+            </HBox>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="Query column:"/>
+                <ComboBox fx:id="queryColumnCombo" prefWidth="220"/>
+                <Label text="Fee output column:"/>
+                <ComboBox fx:id="feeColumnCombo" prefWidth="220"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="startBtn" text="Start" onAction="#onStart" disable="true"/>
+                <Button fx:id="stopBtn"  text="Stop"  onAction="#onStop"  disable="true"/>
+                <Button fx:id="resumeBtn" text="Resume" onAction="#onResume" disable="true"/>
+                <Button fx:id="downloadBtn" text="Download" onAction="#onDownload" disable="true"/>
+            </HBox>
+            <Label fx:id="statusLabel" text="Idle" styleClass="muted"/>
+        </VBox>
+    </top>
+
+    <center>
+        <SplitPane orientation="VERTICAL" dividerPositions="0.65">
+            <VBox spacing="6" styleClass="section,sheet-section">
+                <padding><Insets top="8" right="10" bottom="8" left="10"/></padding>
+                <Label text="2. Sheet Content" styleClass="section-title"/>
+                <TableView fx:id="sheetTable" VBox.vgrow="ALWAYS"/>
+            </VBox>
+            <VBox spacing="6" styleClass="section,log-section">
+                <padding><Insets top="8" right="10" bottom="8" left="10"/></padding>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="3. Log" styleClass="section-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="Clear" onAction="#onClearLog"/>
+                </HBox>
+                <TextArea fx:id="logArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS"/>
+            </VBox>
+        </SplitPane>
+    </center>
+</BorderPane>

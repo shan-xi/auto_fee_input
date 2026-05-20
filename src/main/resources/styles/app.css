@@ -1,0 +1,31 @@
+.root-pane {
+    -fx-background-color: #f7f8fa;
+    -fx-font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    -fx-font-size: 13px;
+}
+
+.section {
+    -fx-background-color: white;
+    -fx-border-color: #e0e3e8;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.section-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-text-fill: #2b6cb0;
+}
+
+.muted {
+    -fx-text-fill: #6b7280;
+}
+
+.button {
+    -fx-padding: 4 14 4 14;
+}
+
+.fee-cell {
+    -fx-background-color: #fff7e0;
+    -fx-font-weight: bold;
+}

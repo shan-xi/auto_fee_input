@@ -1,0 +1,34 @@
+this feature is for auto-recognize the captcha image so the user does not have
+to type it every time. OCR runs over the network so we do not need to bundle
+any native library or model file in the executable.
+
+1. when the captcha popup opens (after step5 download captcha), the app sends
+   the image to a remote OCR service and pre-fills the input field with the
+   guess. the popup still opens — user is the final check.
+2. while OCR is running show "Recognizing..." next to the input field. when
+   the guess arrives, fill the field and select-all so user can press Enter
+   to accept or just start typing to overwrite.
+   important: OCR result only fills the input field. it never auto-sends.
+   the user must press Send (or Enter) to submit, same as manual flow.
+3. if OCR fails (network error, empty result, timeout 5s), leave the field
+   empty and log it. the user types the code manually as before. no popup
+   blocking.
+4. captcha is case-insensitive (see feature_pop_up_wording) so the OCR result
+   does not need exact case to be useful.
+
+OCR provider: Tesseract via the network, free, no API key.
+   - load tesseract.js from a CDN inside a hidden JavaFX WebView, and call
+     it with the captcha image. WebKit + tesseract.js first-run download
+     adds bundle size and a one-time network fetch.
+   - or call a public/self-hosted Tesseract HTTP endpoint that we trust.
+
+config: only the endpoint URL (CDN URL for tesseract.js, or REST URL of the
+Tesseract HTTP service) lives in a small config file next to the jar so we
+can swap providers without rebuilding. no API key.
+
+retry-on-wrong (feature_refresh_capcha) still applies — when the user-submitted
+code is wrong, the popup refreshes the image, and the OCR call runs again on
+the fresh image, pre-filling again.
+
+stop behavior (feature_stop_resume) still applies — pressing Stop during the
+OCR call should cancel it; do not write fail data to the row.
