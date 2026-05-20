@@ -1,0 +1,50 @@
+name: package-windows
+
+# Triggers:
+#   - push a tag like v1.0.0   -> auto build + attach .exe to a Release
+#   - manual "Run workflow"     -> just produces the .exe as a workflow artifact
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Install Inno Setup
+        # jpackage's --type exe needs Inno Setup on PATH on Windows runners.
+        run: choco install innosetup --no-progress -y
+        shell: pwsh
+
+      - name: Build .exe installer
+        run: .\package-windows.ps1
+        shell: pwsh
+
+      - name: List dist
+        run: Get-ChildItem dist
+        shell: pwsh
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoFeeInput-windows-exe
+          path: dist/*.exe
+          if-no-files-found: error
+
+      - name: Attach to Release (only when triggered by a tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.exe
