@@ -56,14 +56,7 @@ public class MainController {
 
     @FXML
     public void initialize() {
-        try {
-            ocrService = new OcrService(OcrConfig.load(),
-                    msg -> Platform.runLater(() -> log(msg)));
-        } catch (Throwable t) {
-            log("OCR init failed (manual entry only): " + t);
-            t.printStackTrace();
-            ocrService = null;
-        }
+        reinitOcrService();
         queryColumnCombo.disableProperty().bind(sheetTable.itemsProperty().isNull());
         feeColumnCombo.disableProperty().bind(sheetTable.itemsProperty().isNull());
 
@@ -301,6 +294,40 @@ public class MainController {
     @FXML
     private void onClearLog() {
         logArea.clear();
+    }
+
+    @FXML
+    private void onSettings() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/settings.fxml"));
+            Parent root = loader.load();
+            SettingsController c = loader.getController();
+            Stage stage = new Stage();
+            stage.setTitle("Settings");
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.setScene(new Scene(root));
+            c.init(stage, this::reinitOcrService);
+            stage.showAndWait();
+        } catch (Exception e) {
+            error("Failed to open Settings: " + e.getMessage());
+        }
+    }
+
+    private void reinitOcrService() {
+        OcrConfig cfg = OcrConfig.load();
+        if (!cfg.ocrEnabled()) {
+            ocrService = null;
+            log("OCR disabled (Settings) — captcha popup will use manual entry");
+            return;
+        }
+        try {
+            ocrService = new OcrService(cfg, msg -> Platform.runLater(() -> log(msg)));
+            log("OCR enabled (Settings) — key source: " + cfg.apiKeySource());
+        } catch (Throwable t) {
+            log("OCR init failed (manual entry only): " + t);
+            t.printStackTrace();
+            ocrService = null;
+        }
     }
 
     private boolean workerRunning() {

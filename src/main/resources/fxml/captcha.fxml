@@ -19,6 +19,7 @@
     <HBox spacing="10" alignment="CENTER">
         <Button text="Refresh" onAction="#onRefresh"/>
         <Button fx:id="sendBtn" text="Send" defaultButton="true" onAction="#onSend"/>
+        <Button fx:id="stopAutoBtn" text="Stop Auto" onAction="#onStopAuto"/>
         <Button text="Cancel Row" cancelButton="true" onAction="#onCancel"/>
     </HBox>
 </VBox>

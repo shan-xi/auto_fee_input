@@ -24,12 +24,15 @@ public class CaptchaController {
     @FXML private ImageView captchaImage;
     @FXML private TextField captchaField;
     @FXML private Button sendBtn;
+    @FXML private Button stopAutoBtn;
 
     private CaptchaSession session;
     private Supplier<byte[]> refresher;
     private OcrService ocr;
     /** Monotonic id; result callbacks ignore stale OCR runs (image refreshed since). */
     private int ocrRequestSeq = 0;
+    private boolean autoSubmit = true;
+    private int autoAttempt = 0;
 
     public void init(String keyword, byte[] initialImage, Supplier<byte[]> refresher, OcrService ocr) {
         this.refresher = refresher;
@@ -37,6 +40,11 @@ public class CaptchaController {
         keywordLabel.setText(keyword);
         setImage(initialImage);
         errorLabel.setText("");
+        if (ocr == null) {
+            autoSubmit = false;
+            stopAutoBtn.setVisible(false);
+            stopAutoBtn.setManaged(false);
+        }
         triggerOcr(initialImage);
     }
 
@@ -75,6 +83,15 @@ public class CaptchaController {
     @FXML
     private void onCancel() {
         if (session != null) session.onCancel();
+    }
+
+    @FXML
+    private void onStopAuto() {
+        autoSubmit = false;
+        stopAutoBtn.setDisable(true);
+        errorLabel.setStyle("-fx-text-fill: #6b7280;");
+        errorLabel.setText("Auto-OCR stopped — type and press Send");
+        if (!captchaField.isDisabled()) captchaField.requestFocus();
     }
 
     /** Called on FX thread by CaptchaSession when worker reports a wrong code. */
@@ -132,10 +149,17 @@ public class CaptchaController {
             captchaField.requestFocus();
             return;
         }
-        errorLabel.setText("");
         captchaField.setText(guess);
         captchaField.selectAll();
         captchaField.requestFocus();
+        if (autoSubmit) {
+            autoAttempt++;
+            errorLabel.setStyle("-fx-text-fill: #2b6cb0;");
+            errorLabel.setText("Auto-sending attempt " + autoAttempt + " (\"" + guess + "\")");
+            onSend();
+        } else {
+            errorLabel.setText("");
+        }
     }
 
     private static String shortReason(Throwable ex) {

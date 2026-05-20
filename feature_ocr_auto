@@ -1,0 +1,11 @@
+this feature is used to automate a flow
+when pop up windows show up
+ocr will start doing
+I want to when ocr finish and put result into the input field, send the result
+
+something you need to care
+where ocr result is not correct. the page will refresh, this is current mechanism, dont break it
+so i think the page may be have change loop for a while
+add a button in pop up window to stop the auto ocr for prevent looping
+
+Stop auto button

@@ -1,0 +1,16 @@
+# Copy this file to ocr.properties (same folder) and put your key below.
+# ocr.properties is git-ignored — your real key never ends up in a commit.
+#
+# Get a free OCR.space key (25k req/month) at https://ocr.space/ocrapi/freekey
+# Without a key, the app falls back to the public demo key 'helloworld'
+# which is rate-limited to ~20 requests per hour.
+#
+# Precedence (highest first):
+#   1. OCR_API_KEY  environment variable
+#   2. apiKey       in ocr.properties
+#   3. built-in default 'helloworld'
+
+# apiKey=YOUR_KEY_HERE
+
+# Endpoint override (only needed if you self-host or proxy OCR.space):
+# endpointUrl=https://api.ocr.space/parse/image

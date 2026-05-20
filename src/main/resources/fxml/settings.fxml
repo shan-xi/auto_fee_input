@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.btse.autofeeinput.controller.SettingsController"
+      spacing="10" prefWidth="460">
+    <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+    <Label text="OCR Settings" style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+    <Separator/>
+
+    <CheckBox fx:id="ocrEnabledCheck" text="Enable OCR auto-fill (uncheck to type captchas manually)" selected="true"/>
+
+    <Label text="OCR.space API Key"/>
+    <PasswordField fx:id="apiKeyField" promptText="Paste your API key, or leave blank to use the demo key"/>
+    <Label text="Get a free key at https://ocr.space/ocrapi/freekey (25k/month)" style="-fx-text-fill:#6b7280; -fx-font-size:12;"/>
+
+    <Label fx:id="locationLabel" wrapText="true" style="-fx-text-fill:#6b7280; -fx-font-size:11;"/>
+    <Label fx:id="statusLabel" wrapText="true" style="-fx-font-size:12;"/>
+
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Button text="Cancel" cancelButton="true" onAction="#onCancel"/>
+        <Button fx:id="saveBtn" text="Save" defaultButton="true" onAction="#onSave"/>
+    </HBox>
+</VBox>
