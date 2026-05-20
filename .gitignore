@@ -1,6 +1,9 @@
 # Maven build output
 target/
 
+# jpackage output (distribute via GitHub Releases, not git)
+dist/
+
 # IntelliJ IDEA
 .idea/
 *.iml

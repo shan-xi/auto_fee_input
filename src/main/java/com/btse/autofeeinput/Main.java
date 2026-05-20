@@ -6,7 +6,18 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
+import java.security.Security;
+
 public class Main extends Application {
+
+    static {
+        // ap.ece.moe.edu.tw still negotiates legacy TLS / weak ciphers. JDK 17
+        // disables TLSv1, TLSv1.1, and small DH/EC keys by default — relax
+        // the policy at the earliest possible moment so the first HTTPS call
+        // succeeds. Must run before any SSL context is created.
+        Security.setProperty("jdk.tls.disabledAlgorithms",
+                "SSLv3, RC4, MD5withRSA, DH keySize < 768, EC keySize < 224");
+    }
 
     @Override
     public void start(Stage stage) throws Exception {

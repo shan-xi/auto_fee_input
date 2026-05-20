@@ -20,6 +20,7 @@ import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
 import org.apache.hc.core5.net.URLEncodedUtils;
+import org.apache.hc.core5.http.ssl.TLS;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.TrustStrategy;
 import org.jsoup.Jsoup;
@@ -86,6 +87,7 @@ public class ApiClient implements Closeable {
                     .build();
             return SSLConnectionSocketFactoryBuilder.create()
                     .setSslContext(ctx)
+                    .setTlsVersions(TLS.V_1_0, TLS.V_1_1, TLS.V_1_2, TLS.V_1_3)
                     .setHostnameVerifier(NoopHostnameVerifier.INSTANCE)
                     .build();
         } catch (Exception e) {
