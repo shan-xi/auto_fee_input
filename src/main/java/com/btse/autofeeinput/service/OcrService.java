@@ -60,9 +60,20 @@ public class OcrService {
         }
         int id = seq.getAndIncrement();
         announce("OCR recognize id=" + id + " bytes=" + imageBytes.length);
+
+        byte[] payload;
+        try {
+            payload = CaptchaImageProcessor.preprocess(imageBytes);
+            announce("OCR id=" + id + " preprocessed bytes=" + payload.length);
+        } catch (Exception e) {
+            announce("OCR id=" + id + " preprocess failed (" + e.getMessage() + "), using raw image");
+            payload = imageBytes;
+        }
+        final byte[] toSend = payload;
+
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String text = call(id, imageBytes, timeoutMs);
+                String text = call(id, toSend, timeoutMs);
                 announce("OCR result id=" + id + " text=" + text.replace("\n", "\\n"));
                 return text;
             } catch (Exception e) {
@@ -86,6 +97,8 @@ public class OcrService {
                 .addTextBody("language", "eng")
                 .addTextBody("isOverlayRequired", "false")
                 .addTextBody("OCREngine", "2")
+                .addTextBody("scale", "true")
+                .addTextBody("detectOrientation", "false")
                 .addBinaryBody("file", imageBytes, ContentType.IMAGE_PNG, "captcha.png")
                 .build();
         post.setEntity(entity);
