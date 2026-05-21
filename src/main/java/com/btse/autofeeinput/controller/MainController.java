@@ -52,7 +52,6 @@ public class MainController {
     private ProcessingService processor;
     private final AtomicReference<CaptchaSession> activeCaptcha = new AtomicReference<>();
     private final CaptchaUi captchaUi = this::openCaptcha;
-    private boolean resultReady;
 
     private final SimpleDateFormat ts = new SimpleDateFormat("HH:mm:ss");
     private final SimpleDateFormat fileTs = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -90,8 +89,7 @@ public class MainController {
             filePathLabel.setText(f.getAbsolutePath());
             populateTable(sheetData);
             populateComboBoxes(sheetData);
-            downloadBtn.setDisable(true);
-            resultReady = false;
+            downloadBtn.setDisable(false);
             statusLabel.setText("Loaded " + sheetData.getRows().size() + " rows.");
             log("Loaded file: " + f.getAbsolutePath() + " (rows=" + sheetData.getRows().size() + ")");
         } catch (Exception e) {
@@ -101,6 +99,24 @@ public class MainController {
 
     private void populateTable(SheetData data) {
         sheetTable.getColumns().clear();
+
+        // Display-only row number column — not part of SheetData, not saved on download.
+        TableColumn<ObservableList<String>, String> rowNumCol = new TableColumn<>("#");
+        rowNumCol.setCellValueFactory(cd -> new SimpleStringProperty(""));
+        rowNumCol.setCellFactory(col -> new TableCell<>() {
+            @Override
+            protected void updateItem(String item, boolean empty) {
+                super.updateItem(item, empty);
+                TableRow<?> row = getTableRow();
+                setText(empty || row == null || row.getIndex() < 0
+                        || row.getIndex() >= getTableView().getItems().size()
+                        ? null : String.valueOf(row.getIndex() + 1));
+            }
+        });
+        rowNumCol.setSortable(false);
+        rowNumCol.setPrefWidth(56);
+        sheetTable.getColumns().add(rowNumCol);
+
         for (int i = 0; i < data.getHeaders().size(); i++) {
             final int colIdx = i;
             TableColumn<ObservableList<String>, String> col = new TableColumn<>(data.getHeaders().get(i));
@@ -225,8 +241,6 @@ public class MainController {
         startBtn.setDisable(!finished);
         resumeBtn.setDisable(finished);
         if (finished) {
-            resultReady = true;
-            downloadBtn.setDisable(false);
             statusLabel.setText("Done. Press Download to save.");
             log("Processing complete. Awaiting Download.");
         } else {
@@ -237,7 +251,7 @@ public class MainController {
 
     @FXML
     private void onDownload() {
-        if (!resultReady || sheetData == null || sourceFile == null) return;
+        if (sheetData == null || sourceFile == null) return;
 
         String srcName = sourceFile.getName();
         int dot = srcName.lastIndexOf('.');

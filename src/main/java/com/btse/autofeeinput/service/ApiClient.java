@@ -199,33 +199,155 @@ public class ApiClient implements Closeable {
         }
     }
 
+    private static final List<String> FEE_ROW_LABELS = List.of(
+            "上學期計6個月", "全學期總收費", "總計");
+
     /**
-     * Extracts the first "學費" amount from the 收費明細 page.
-     * Searches all tables for a row whose first cell starts with 學費 and
-     * returns the next numeric-looking cell.
+     * Extracts the 學費 amount from the 收費明細 page.
+     * Scans every table for the first row labelled 上學期計 6 個月,
+     * 全學期總收費, or 總計, then reads its 半日班 / 全日班 values.
+     * Output formats:
+     *   both classes present → "學費 半日班X/全日班Y"
+     *   only 全日班           → "學費 全日班Y"
+     *   only 半日班           → "學費 半日班X"
      */
     public static String parseTuitionFee(String html) {
         Document doc = Jsoup.parse(html);
-        Elements tables = doc.select("table");
-        for (Element table : tables) {
-            Elements rows = table.select("tr");
-            for (Element row : rows) {
-                Elements cells = row.select("td, th");
-                if (cells.isEmpty()) continue;
-                String first = cells.first().text().trim();
-                if (first.startsWith("學費")) {
-                    for (int i = 1; i < cells.size(); i++) {
-                        String v = cells.get(i).text().trim();
-                        if (!v.isEmpty() && v.matches("[\\d,]+(\\.[\\d]+)?")) {
-                            return v.replace(",", "");
-                        }
-                    }
-                    // Fallback: return whatever the second cell holds
-                    if (cells.size() >= 2) return cells.get(1).text().trim();
-                }
-            }
+        for (Element table : doc.select("table")) {
+            // Only process leaf tables — layout tables that wrap others would
+            // pollute findClassColumnRanges / label matching with nested text.
+            if (hasNestedTable(table)) continue;
+            String result = extractFromTable(table);
+            if (!result.isEmpty()) return result;
+        }
+        if (log.isInfoEnabled()) {
+            log.info("parseTuitionFee: no match. Row labels seen: {}", collectRowLabels(doc));
         }
         return "";
+    }
+
+    private static boolean hasNestedTable(Element table) {
+        for (Element desc : table.getAllElements()) {
+            if (desc != table && "table".equals(desc.tagName())) return true;
+        }
+        return false;
+    }
+
+    private static List<String> collectRowLabels(Document doc) {
+        List<String> labels = new ArrayList<>();
+        for (Element row : doc.select("tr")) {
+            Elements cells = row.select("td, th");
+            if (cells.isEmpty()) continue;
+            String s = squish(cells.first().text());
+            if (!s.isEmpty()) labels.add(s);
+            if (labels.size() >= 40) break;
+        }
+        return labels;
+    }
+
+    private static String extractFromTable(Element table) {
+        Elements rows = table.select("tr");
+        if (rows.isEmpty()) return "";
+
+        int[] halfRange = {-1, -1}; // [start, endExclusive]
+        int[] fullRange = {-1, -1};
+        findClassColumnRanges(rows, halfRange, fullRange);
+        // Only fee tables expose 半日班 / 全日班 headers — skip layout tables.
+        if (halfRange[0] < 0 && fullRange[0] < 0) return "";
+
+        for (Element row : rows) {
+            Elements cells = row.select("td, th");
+            if (cells.isEmpty()) continue;
+            String label = squish(cells.first().text());
+            if (!matchesFeeLabel(label)) continue;
+
+            String half = firstAmountInRange(cells, halfRange);
+            String full = firstAmountInRange(cells, fullRange);
+            boolean hasHalf = hasAmount(half);
+            boolean hasFull = hasAmount(full);
+
+            if (log.isInfoEnabled()) {
+                log.info("parseTuitionFee: matched row '{}' half='{}' full='{}'", label, half, full);
+            }
+            if (hasHalf && hasFull) return "學費 半日班" + half + "/全日班" + full;
+            if (hasFull) return "學費 全日班" + full;
+            if (hasHalf) return "學費 半日班" + half;
+        }
+        return "";
+    }
+
+    private static boolean matchesFeeLabel(String squished) {
+        for (String t : FEE_ROW_LABELS) {
+            if (squished.contains(t)) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Walks header rows (top-down) and resolves the column ranges occupied by
+     * 半日班 and 全日班 headers. Honours colspan so multi-column class headers
+     * still produce the right [start, end) range.
+     */
+    private static void findClassColumnRanges(Elements rows, int[] halfOut, int[] fullOut) {
+        for (Element row : rows) {
+            Elements cells = row.select("td, th");
+            int col = 0;
+            for (Element cell : cells) {
+                int span = parseSpan(cell.attr("colspan"));
+                String text = squish(cell.text());
+                if (halfOut[0] < 0 && text.contains("半日班")) {
+                    halfOut[0] = col;
+                    halfOut[1] = col + span;
+                }
+                if (fullOut[0] < 0 && text.contains("全日班")) {
+                    fullOut[0] = col;
+                    fullOut[1] = col + span;
+                }
+                col += span;
+            }
+            if (halfOut[0] >= 0 && fullOut[0] >= 0) return;
+        }
+    }
+
+    private static int parseSpan(String raw) {
+        if (raw == null || raw.isEmpty()) return 1;
+        try {
+            int n = Integer.parseInt(raw.trim());
+            return n < 1 ? 1 : n;
+        } catch (NumberFormatException e) {
+            return 1;
+        }
+    }
+
+    /** First numeric cell whose column index falls inside [start, end). */
+    private static String firstAmountInRange(Elements cells, int[] range) {
+        if (range[0] < 0) return "";
+        int col = 0;
+        for (Element cell : cells) {
+            int span = parseSpan(cell.attr("colspan"));
+            int next = col + span;
+            if (col >= range[0] && col < range[1]) {
+                String v = squish(cell.text());
+                if (hasAmount(v)) return v;
+            }
+            col = next;
+            if (col >= range[1]) break;
+        }
+        return "";
+    }
+
+    /** True when the cell contains at least one digit. */
+    private static boolean hasAmount(String s) {
+        for (int i = 0; i < s.length(); i++) {
+            if (Character.isDigit(s.charAt(i))) return true;
+        }
+        return false;
+    }
+
+    /** Collapse all whitespace (incl. NBSP) and trim. */
+    private static String squish(String s) {
+        if (s == null) return "";
+        return s.replace(' ', ' ').replaceAll("\\s+", "").trim();
     }
 
     private FormState postForm(String url, List<NameValuePair> form, String tag) throws IOException {

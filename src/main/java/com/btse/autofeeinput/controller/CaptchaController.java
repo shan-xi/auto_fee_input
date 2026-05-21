@@ -18,6 +18,7 @@ public class CaptchaController {
 
     private static final Logger log = LoggerFactory.getLogger(CaptchaController.class);
     private static final long OCR_TIMEOUT_MS = 20_000L;
+    private static final int MAX_EMPTY_OCR_RETRIES = 5;
 
     @FXML private Label keywordLabel;
     @FXML private Label errorLabel;
@@ -32,6 +33,7 @@ public class CaptchaController {
     private int ocrRequestSeq = 0;
     private boolean autoSubmit = true;
     private int autoAttempt = 0;
+    private int emptyOcrRetries = 0;
 
     public void init(String keyword, byte[] initialImage, Supplier<byte[]> refresher, OcrService ocr) {
         this.refresher = refresher;
@@ -132,11 +134,20 @@ public class CaptchaController {
         }
         String guess = text == null ? "" : text.replaceAll("[^A-Za-z0-9]", "");
         if (guess.isEmpty()) {
+            if (autoSubmit && emptyOcrRetries < MAX_EMPTY_OCR_RETRIES) {
+                emptyOcrRetries++;
+                errorLabel.setStyle("-fx-text-fill: #2b6cb0;");
+                errorLabel.setText("OCR empty — refreshing (" + emptyOcrRetries
+                        + "/" + MAX_EMPTY_OCR_RETRIES + ")");
+                onRefresh();
+                return;
+            }
             errorLabel.setStyle("-fx-text-fill: #6b7280;");
             errorLabel.setText("OCR returned empty — type manually");
             captchaField.requestFocus();
             return;
         }
+        emptyOcrRetries = 0;
         captchaField.setText(guess);
         captchaField.selectAll();
         captchaField.requestFocus();
