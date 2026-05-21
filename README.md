@@ -29,7 +29,7 @@ mvn clean javafx:run
 
 ```bash
 mvn clean package
-java -jar target/auto-fee-input-1.0.0.jar
+java -jar target/auto-fee-input-*.jar
 ```
 
 ## Usage

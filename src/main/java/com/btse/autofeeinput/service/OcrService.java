@@ -13,6 +13,7 @@ import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
@@ -26,7 +27,7 @@ import java.util.regex.Pattern;
  * the parsed text. Default endpoint + demo API key live in {@link OcrConfig}.
  * Calls run on the common ForkJoinPool — safe to invoke from any thread.
  */
-public class OcrService {
+public class OcrService implements Closeable {
 
     private static final Logger log = LoggerFactory.getLogger(OcrService.class);
 
@@ -129,7 +130,7 @@ public class OcrService {
         }
     }
 
-    private static String unescapeJson(String s) {
+    static String unescapeJson(String s) {
         StringBuilder b = new StringBuilder(s.length());
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
@@ -164,8 +165,17 @@ public class OcrService {
     }
 
     private static String maskKey(String k) {
-        if (k == null || k.length() <= 4) return "***";
-        return k.substring(0, 2) + "***" + k.substring(k.length() - 2);
+        if (k == null || k.isEmpty()) return "<unset>";
+        return "<set len=" + k.length() + ">";
+    }
+
+    @Override
+    public void close() {
+        try {
+            http.close();
+        } catch (IOException e) {
+            log.warn("OcrService close failed: {}", e.getMessage());
+        }
     }
 
     private static String truncate(String s) {

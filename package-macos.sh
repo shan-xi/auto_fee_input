@@ -12,7 +12,12 @@
 set -euo pipefail
 
 APP_NAME="AutoFeeInput"
-APP_VERSION="1.0.0"
+# Single source of truth for the version is pom.xml.
+APP_VERSION="$(sed -n 's|.*<version>\(.*\)</version>.*|\1|p' pom.xml | head -n1)"
+if [[ -z "$APP_VERSION" ]]; then
+    echo "Failed to read <version> from pom.xml" >&2
+    exit 1
+fi
 JAR_NAME="auto-fee-input-${APP_VERSION}.jar"
 MAIN_CLASS="com.btse.autofeeinput.Launcher"
 OUT_DIR="dist"

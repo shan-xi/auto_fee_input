@@ -38,13 +38,6 @@ jobs:
         run: choco install innosetup --no-progress -y
         shell: pwsh
 
-      - name: Diagnostics — show workspace contents
-        run: |
-          Write-Host "PWD: $PWD"
-          Write-Host "GITHUB_WORKSPACE: $env:GITHUB_WORKSPACE"
-          Get-ChildItem -Force | Select-Object Mode, Length, Name | Format-Table -AutoSize
-        shell: pwsh
-
       - name: Build .exe installer
         # Use an explicit absolute path; PowerShell sometimes can't resolve
         # '.\script.ps1' if the runner's cwd has drifted.

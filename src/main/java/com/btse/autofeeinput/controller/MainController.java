@@ -18,9 +18,10 @@ import javafx.scene.control.*;
 import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.CompletableFuture;
@@ -28,6 +29,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public class MainController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MainController.class);
 
     @FXML private Button uploadBtn;
     @FXML private Label filePathLabel;
@@ -141,46 +144,9 @@ public class MainController {
             return;
         }
 
-        startBtn.setDisable(true);
-        stopBtn.setDisable(false);
-        resumeBtn.setDisable(true);
-        uploadBtn.setDisable(true);
         statusLabel.setText("Running...");
         log("Start processing. queryCol=" + queryCol + " feeCol=" + feeCol);
-
-        processor = new ProcessingService(sheetData, qIdx, fIdx, captchaUi, new ProcessingService.Listener() {
-            @Override public void onRowStart(int rowIndex, String keyword) {
-                Platform.runLater(() -> statusLabel.setText("Row " + (rowIndex + 1) + ": " + keyword));
-            }
-            @Override public void onRowDone(int rowIndex, String fee) {
-                Platform.runLater(() -> {
-                    sheetData.setCell(rowIndex, fIdx, fee == null ? "" : fee);
-                    refreshFeeColumn();
-                });
-            }
-            @Override public void onRowError(int rowIndex, String keyword, String message) {
-                Platform.runLater(() -> {
-                    sheetData.setCell(rowIndex, fIdx, "ERR:" + (message == null ? "" : message));
-                    refreshFeeColumn();
-                    log("Row " + (rowIndex + 1) + " error: " + message);
-                });
-            }
-            @Override public void log(String message) {
-                Platform.runLater(() -> MainController.this.log(message));
-            }
-        });
-
-        workerThread = new Thread(() -> {
-            try {
-                processor.run();
-            } catch (Exception e) {
-                Platform.runLater(() -> error("Worker crashed: " + e.getMessage()));
-            } finally {
-                Platform.runLater(this::afterWorkerEnded);
-            }
-        }, "fee-worker");
-        workerThread.setDaemon(true);
-        workerThread.start();
+        launchWorker(qIdx, fIdx, 0);
     }
 
     @FXML
@@ -204,14 +170,18 @@ public class MainController {
         if (sheetData == null) return;
         int resumeFrom = processor == null ? 0 : processor.getCurrentRow();
         log("Resume from row " + (resumeFrom + 1));
-        resumeBtn.setDisable(true);
-        stopBtn.setDisable(false);
-        uploadBtn.setDisable(true);
-        startBtn.setDisable(true);
         statusLabel.setText("Resuming...");
 
         int qIdx = sheetData.columnIndex(queryColumnCombo.getValue());
         int fIdx = sheetData.columnIndex(feeColumnCombo.getValue());
+        launchWorker(qIdx, fIdx, resumeFrom);
+    }
+
+    private void launchWorker(int qIdx, int fIdx, int startRow) {
+        startBtn.setDisable(true);
+        stopBtn.setDisable(false);
+        resumeBtn.setDisable(true);
+        uploadBtn.setDisable(true);
 
         processor = new ProcessingService(sheetData, qIdx, fIdx, captchaUi, new ProcessingService.Listener() {
             @Override public void onRowStart(int rowIndex, String keyword) {
@@ -234,10 +204,10 @@ public class MainController {
                 Platform.runLater(() -> MainController.this.log(message));
             }
         });
-        final int from = resumeFrom;
+
         workerThread = new Thread(() -> {
             try {
-                processor.run(from);
+                processor.run(startRow);
             } catch (Exception e) {
                 Platform.runLater(() -> error("Worker crashed: " + e.getMessage()));
             } finally {
@@ -260,7 +230,8 @@ public class MainController {
             statusLabel.setText("Done. Press Download to save.");
             log("Processing complete. Awaiting Download.");
         } else {
-            statusLabel.setText("Stopped at row " + (processor.getCurrentRow() + 1));
+            int row = processor == null ? 0 : processor.getCurrentRow();
+            statusLabel.setText("Stopped at row " + (row + 1));
         }
     }
 
@@ -304,7 +275,7 @@ public class MainController {
             SettingsController c = loader.getController();
             Stage stage = new Stage();
             stage.setTitle("Settings");
-            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.initModality(Modality.APPLICATION_MODAL);
             stage.setScene(new Scene(root));
             c.init(stage, this::reinitOcrService);
             stage.showAndWait();
@@ -314,20 +285,22 @@ public class MainController {
     }
 
     private void reinitOcrService() {
+        OcrService old = ocrService;
         OcrConfig cfg = OcrConfig.load();
         if (!cfg.ocrEnabled()) {
             ocrService = null;
             log("OCR disabled (Settings) — captcha popup will use manual entry");
-            return;
+        } else {
+            try {
+                ocrService = new OcrService(cfg, msg -> Platform.runLater(() -> log(msg)));
+                log("OCR enabled (Settings) — key source: " + cfg.apiKeySource());
+            } catch (Throwable t) {
+                log("OCR init failed (manual entry only): " + t);
+                LOG.error("OCR init failed", t);
+                ocrService = null;
+            }
         }
-        try {
-            ocrService = new OcrService(cfg, msg -> Platform.runLater(() -> log(msg)));
-            log("OCR enabled (Settings) — key source: " + cfg.apiKeySource());
-        } catch (Throwable t) {
-            log("OCR init failed (manual entry only): " + t);
-            t.printStackTrace();
-            ocrService = null;
-        }
+        if (old != null && old != ocrService) old.close();
     }
 
     private boolean workerRunning() {
@@ -365,8 +338,9 @@ public class MainController {
         } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             throw ie;
-        } catch (Exception e) {
-            throw new InterruptedException("Failed to open captcha popup: " + e.getMessage());
+        } catch (java.util.concurrent.ExecutionException e) {
+            Throwable cause = e.getCause() != null ? e.getCause() : e;
+            throw new RuntimeException("Failed to open captcha popup", cause);
         }
     }
 

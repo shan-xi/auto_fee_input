@@ -9,7 +9,7 @@
 # Open PowerShell in this folder and run:
 #   .\package-windows.ps1
 #
-# Output: dist\AutoFeeInput-1.0.0.exe (the installer)
+# Output: dist\AutoFeeInput-<version>.exe (the installer)
 #
 # If you don't want to install Inno Setup, change $PackageType to "app-image"
 # below — that produces a dist\AutoFeeInput\ folder you can zip and send.
@@ -17,7 +17,10 @@
 $ErrorActionPreference = 'Stop'
 
 $AppName     = 'AutoFeeInput'
-$AppVersion  = '1.0.0'
+# Single source of truth for the version is pom.xml.
+$pomMatch    = Select-String -Path 'pom.xml' -Pattern '<version>(.*?)</version>' | Select-Object -First 1
+if (-not $pomMatch) { throw 'Failed to read <version> from pom.xml' }
+$AppVersion  = $pomMatch.Matches[0].Groups[1].Value
 $JarName     = "auto-fee-input-$AppVersion.jar"
 $MainClass   = 'com.btse.autofeeinput.Launcher'
 $OutDir      = 'dist'

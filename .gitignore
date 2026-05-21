@@ -35,3 +35,7 @@ bin/
 
 # Local OCR config (contains API key) — checked-in template is ocr.properties.example
 ocr.properties
+
+# Local feature notes / specs — keep out of source tree
+/feature_*
+/spec

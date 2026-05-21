@@ -80,6 +80,8 @@ public class ApiClient implements Closeable {
      * truststore can't validate. Single-host scraper — accept any cert.
      */
     private static SSLConnectionSocketFactory trustAllSslSocketFactory() {
+        log.warn("ApiClient: cert validation and hostname verification are disabled "
+                + "for {} — connections are not MITM-protected", BASE);
         try {
             TrustStrategy trustAll = (chain, authType) -> true;
             javax.net.ssl.SSLContext ctx = SSLContextBuilder.create()
@@ -211,7 +213,7 @@ public class ApiClient implements Closeable {
                 Elements cells = row.select("td, th");
                 if (cells.isEmpty()) continue;
                 String first = cells.first().text().trim();
-                if (first.startsWith("學費") || first.equals("學費")) {
+                if (first.startsWith("學費")) {
                     for (int i = 1; i < cells.size(); i++) {
                         String v = cells.get(i).text().trim();
                         if (!v.isEmpty() && v.matches("[\\d,]+(\\.[\\d]+)?")) {

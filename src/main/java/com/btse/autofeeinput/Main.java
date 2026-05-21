@@ -11,12 +11,14 @@ import java.security.Security;
 public class Main extends Application {
 
     static {
-        // ap.ece.moe.edu.tw still negotiates legacy TLS / weak ciphers. JDK 17
-        // disables TLSv1, TLSv1.1, and small DH/EC keys by default — relax
-        // the policy at the earliest possible moment so the first HTTPS call
-        // succeeds. Must run before any SSL context is created.
+        // ap.ece.moe.edu.tw requires TLSv1 / TLSv1.1, which JDK 11+ disables
+        // by default. jdk.tls.disabledAlgorithms is JVM-global, so re-enable
+        // only those two; keep DES, 3DES, anon, NULL, RC4 and small keys
+        // disabled. Must run before any SSL context is created.
         Security.setProperty("jdk.tls.disabledAlgorithms",
-                "SSLv3, RC4, MD5withRSA, DH keySize < 768, EC keySize < 224");
+                "SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, "
+                        + "EC keySize < 224, 3DES_EDE_CBC, anon, NULL, "
+                        + "include jdk.disabled.namedCurves");
     }
 
     @Override
