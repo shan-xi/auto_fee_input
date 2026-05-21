@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -39,17 +41,21 @@ public class OcrService implements Closeable {
             Pattern.compile("\"ErrorMessage\"\\s*:\\s*(?:\\[\\s*\"((?:[^\"\\\\]|\\\\.)*)\"|\"((?:[^\"\\\\]|\\\\.)*)\")");
 
     private final String endpointUrl;
-    private final String apiKey;
+    private final List<String> apiKeys;
+    private final AtomicInteger activeIdx = new AtomicInteger();
     private final Consumer<String> uiLog;
     private final CloseableHttpClient http;
     private final AtomicInteger seq = new AtomicInteger();
 
     public OcrService(OcrConfig cfg, Consumer<String> uiLog) {
         this.endpointUrl = cfg.endpointUrl();
-        this.apiKey = cfg.apiKey();
+        List<String> keys = new ArrayList<>(cfg.apiKeys());
+        if (keys.isEmpty()) keys.add(OcrConfig.DEFAULT_API_KEY);
+        this.apiKeys = keys;
         this.uiLog = uiLog == null ? s -> {} : uiLog;
         this.http = HttpClients.createDefault();
-        announce("OCR ready (provider=ocr.space url=" + endpointUrl + " key=" + maskKey(apiKey) + ")");
+        announce("OCR ready (provider=ocr.space url=" + endpointUrl
+                + " keys=" + apiKeys.size() + " active=#1 firstKey=" + maskKey(apiKeys.get(0)) + ")");
     }
 
     /** Returns the raw recognized text. Caller cleans whitespace/punctuation. */
@@ -73,18 +79,53 @@ public class OcrService implements Closeable {
         final byte[] toSend = payload;
 
         return CompletableFuture.supplyAsync(() -> {
-            try {
-                String text = call(id, toSend, timeoutMs);
-                announce("OCR result id=" + id + " text=" + text.replace("\n", "\\n"));
-                return text;
-            } catch (Exception e) {
-                announce("OCR error id=" + id + " : " + e.getMessage());
-                throw new RuntimeException(e);
+            int attempts = Math.max(1, apiKeys.size());
+            IOException lastErr = null;
+            for (int i = 0; i < attempts; i++) {
+                int keyIdx = activeIdx.get();
+                String key = apiKeys.get(keyIdx);
+                try {
+                    String text = call(id, toSend, timeoutMs, key);
+                    announce("OCR result id=" + id + " key=#" + (keyIdx + 1)
+                            + " text=" + text.replace("\n", "\\n"));
+                    return text;
+                } catch (IOException e) {
+                    lastErr = e;
+                    if (isRateLimit(e) && apiKeys.size() > 1) {
+                        int next = (keyIdx + 1) % apiKeys.size();
+                        // Only rotate if no other thread already advanced past keyIdx.
+                        activeIdx.compareAndSet(keyIdx, next);
+                        announce("OCR rate-limited on key #" + (keyIdx + 1)
+                                + " — rotating to key #" + (activeIdx.get() + 1));
+                        continue;
+                    }
+                    announce("OCR error id=" + id + " key=#" + (keyIdx + 1) + " : " + e.getMessage());
+                    throw new RuntimeException(e);
+                } catch (Exception e) {
+                    announce("OCR error id=" + id + " key=#" + (keyIdx + 1) + " : " + e.getMessage());
+                    throw new RuntimeException(e);
+                }
             }
+            announce("OCR id=" + id + " : all " + apiKeys.size() + " keys rate-limited");
+            throw new RuntimeException(lastErr != null ? lastErr : new IOException("all keys exhausted"));
         });
     }
 
-    private String call(int id, byte[] imageBytes, long timeoutMs) throws IOException {
+    static boolean isRateLimit(Throwable t) {
+        if (t == null) return false;
+        String msg = t.getMessage();
+        if (msg == null) return false;
+        String lower = msg.toLowerCase();
+        return lower.contains("rate limit")
+                || lower.contains("rate-limit")
+                || lower.contains("daily limit")
+                || lower.contains("limit exceeded")
+                || lower.contains("too many requests")
+                || lower.contains("http 429")
+                || lower.contains("http 403");
+    }
+
+    private String call(int id, byte[] imageBytes, long timeoutMs, String apiKey) throws IOException {
         RequestConfig cfg = RequestConfig.custom()
                 .setConnectTimeout(Timeout.ofMilliseconds(Math.max(2000, timeoutMs / 4)))
                 .setResponseTimeout(Timeout.ofMilliseconds(timeoutMs))

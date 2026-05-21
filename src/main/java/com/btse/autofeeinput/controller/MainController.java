@@ -69,6 +69,74 @@ public class MainController {
                         || workerRunning());
         queryColumnCombo.valueProperty().addListener((o, a, b) -> updateStart.run());
         feeColumnCombo.valueProperty().addListener((o, a, b) -> updateStart.run());
+
+        installSheetCopySupport();
+    }
+
+    /** Enables cell-level selection, Ctrl/Cmd+C copy, and a Copy context menu on the sheet. */
+    private void installSheetCopySupport() {
+        sheetTable.getSelectionModel().setCellSelectionEnabled(true);
+        sheetTable.getSelectionModel().setSelectionMode(javafx.scene.control.SelectionMode.MULTIPLE);
+
+        javafx.scene.input.KeyCombination copyShortcut = new javafx.scene.input.KeyCodeCombination(
+                javafx.scene.input.KeyCode.C, javafx.scene.input.KeyCombination.SHORTCUT_DOWN);
+        sheetTable.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
+            if (copyShortcut.match(e)) {
+                copySelectionToClipboard();
+                e.consume();
+            }
+        });
+
+        MenuItem copyItem = new MenuItem("Copy");
+        copyItem.setAccelerator(copyShortcut);
+        copyItem.setOnAction(e -> copySelectionToClipboard());
+        sheetTable.setContextMenu(new ContextMenu(copyItem));
+    }
+
+    /**
+     * Copies the current selection to the clipboard as TSV. Cells from the same
+     * row are tab-separated; rows are newline-separated. Empty selection no-ops.
+     */
+    private void copySelectionToClipboard() {
+        var selected = sheetTable.getSelectionModel().getSelectedCells();
+        if (selected.isEmpty()) return;
+
+        java.util.TreeMap<Integer, java.util.TreeMap<Integer, String>> grid = new java.util.TreeMap<>();
+        for (var pos : selected) {
+            int rowIdx = pos.getRow();
+            int colIdx = pos.getColumn();
+            if (rowIdx < 0 || colIdx < 0) continue;
+            String text = "";
+            Object cellValue = pos.getTableColumn() == null ? null
+                    : pos.getTableColumn().getCellObservableValue(rowIdx) == null
+                            ? null : pos.getTableColumn().getCellObservableValue(rowIdx).getValue();
+            if (cellValue != null) text = cellValue.toString();
+            grid.computeIfAbsent(rowIdx, k -> new java.util.TreeMap<>()).put(colIdx, text);
+        }
+        if (grid.isEmpty()) return;
+
+        StringBuilder out = new StringBuilder();
+        boolean firstRow = true;
+        for (var row : grid.values()) {
+            if (!firstRow) out.append('\n');
+            firstRow = false;
+            boolean firstCell = true;
+            int prevCol = -1;
+            for (var entry : row.entrySet()) {
+                if (!firstCell) {
+                    // Pad gaps when the user selected non-contiguous columns.
+                    int gap = entry.getKey() - prevCol - 1;
+                    for (int i = 0; i < gap; i++) out.append('\t');
+                    out.append('\t');
+                }
+                out.append(entry.getValue());
+                prevCol = entry.getKey();
+                firstCell = false;
+            }
+        }
+        javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+        content.putString(out.toString());
+        javafx.scene.input.Clipboard.getSystemClipboard().setContent(content);
     }
 
     @FXML
@@ -102,16 +170,9 @@ public class MainController {
 
         // Display-only row number column — not part of SheetData, not saved on download.
         TableColumn<ObservableList<String>, String> rowNumCol = new TableColumn<>("#");
-        rowNumCol.setCellValueFactory(cd -> new SimpleStringProperty(""));
-        rowNumCol.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                TableRow<?> row = getTableRow();
-                setText(empty || row == null || row.getIndex() < 0
-                        || row.getIndex() >= getTableView().getItems().size()
-                        ? null : String.valueOf(row.getIndex() + 1));
-            }
+        rowNumCol.setCellValueFactory(cd -> {
+            int idx = sheetTable.getItems().indexOf(cd.getValue());
+            return new SimpleStringProperty(idx < 0 ? "" : String.valueOf(idx + 1));
         });
         rowNumCol.setSortable(false);
         rowNumCol.setPrefWidth(56);
@@ -307,7 +368,8 @@ public class MainController {
         } else {
             try {
                 ocrService = new OcrService(cfg, msg -> Platform.runLater(() -> log(msg)));
-                log("OCR enabled (Settings) — key source: " + cfg.apiKeySource());
+                log("OCR enabled (Settings) — keys=" + cfg.apiKeys().size()
+                        + " source: " + cfg.apiKeySource());
             } catch (Throwable t) {
                 log("OCR init failed (manual entry only): " + t);
                 LOG.error("OCR init failed", t);

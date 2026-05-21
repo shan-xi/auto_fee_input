@@ -6,7 +6,7 @@
 
 <VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.btse.autofeeinput.controller.SettingsController"
-      spacing="10" prefWidth="460">
+      spacing="10" prefWidth="520">
     <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
 
     <Label text="OCR Settings" style="-fx-font-weight: bold; -fx-font-size: 14;"/>
@@ -14,8 +14,34 @@
 
     <CheckBox fx:id="ocrEnabledCheck" text="Enable OCR auto-fill (uncheck to type captchas manually)" selected="true"/>
 
-    <Label text="OCR.space API Key"/>
-    <PasswordField fx:id="apiKeyField" promptText="Paste your API key, or leave blank to use the demo key"/>
+    <Label text="OCR.space API Keys (key #1 is the default active key; rotates on rate limit)"/>
+    <GridPane fx:id="apiKeyGrid" hgap="6" vgap="4">
+        <columnConstraints>
+            <ColumnConstraints minWidth="42" prefWidth="42"/>
+            <ColumnConstraints hgrow="ALWAYS"/>
+        </columnConstraints>
+
+        <Label text="#1" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey1" promptText="Default active key (leave blank to use demo)" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <Label text="#2" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey2" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <Label text="#3" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey3" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <Label text="#4" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey4" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+        <Label text="#5" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey5" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+        <Label text="#6" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey6" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+        <Label text="#7" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey7" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
+        <Label text="#8" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey8" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
+        <Label text="#9" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey9" GridPane.rowIndex="8" GridPane.columnIndex="1"/>
+        <Label text="#10" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
+        <PasswordField fx:id="apiKey10" GridPane.rowIndex="9" GridPane.columnIndex="1"/>
+    </GridPane>
     <Label text="Get a free key at https://ocr.space/ocrapi/freekey (25k/month)" style="-fx-text-fill:#6b7280; -fx-font-size:12;"/>
 
     <Label fx:id="locationLabel" wrapText="true" style="-fx-text-fill:#6b7280; -fx-font-size:11;"/>
