@@ -24,7 +24,6 @@ public class CaptchaController {
     @FXML private ImageView captchaImage;
     @FXML private TextField captchaField;
     @FXML private Button sendBtn;
-    @FXML private Button stopAutoBtn;
 
     private CaptchaSession session;
     private Supplier<byte[]> refresher;
@@ -42,8 +41,6 @@ public class CaptchaController {
         errorLabel.setText("");
         if (ocr == null) {
             autoSubmit = false;
-            stopAutoBtn.setVisible(false);
-            stopAutoBtn.setManaged(false);
         }
         triggerOcr(initialImage);
     }
@@ -83,15 +80,6 @@ public class CaptchaController {
     @FXML
     private void onCancel() {
         if (session != null) session.onCancel();
-    }
-
-    @FXML
-    private void onStopAuto() {
-        autoSubmit = false;
-        stopAutoBtn.setDisable(true);
-        errorLabel.setStyle("-fx-text-fill: #6b7280;");
-        errorLabel.setText("Auto-OCR stopped — type and press Send");
-        if (!captchaField.isDisabled()) captchaField.requestFocus();
     }
 
     /** Called on FX thread by CaptchaSession when worker reports a wrong code. */
