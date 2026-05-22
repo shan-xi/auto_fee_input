@@ -175,6 +175,12 @@ public class ProcessingService {
                         attempt++;
                         continue;
                     }
+                    // Captcha accepted — persist the (image, code) pair as training data.
+                    byte[] solvedImage = session.lastImage();
+                    String savedAs = TrainingDataStore.save(solvedImage, code);
+                    if (!savedAs.isEmpty()) {
+                        listener.log("[" + keyword + "] saved training sample: " + savedAs);
+                    }
                     String fee = ApiClient.parseTuitionFee(html);
                     listener.log("[" + keyword + "] fee=" + (fee.isEmpty() ? "<not found>" : fee));
                     return fee;

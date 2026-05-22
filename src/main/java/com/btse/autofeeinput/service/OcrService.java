@@ -3,6 +3,8 @@ package com.btse.autofeeinput.service;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -117,6 +119,7 @@ public class OcrService implements Closeable {
                                                 + (keyIdx + 1)
                                                 + " — rotating to key #"
                                                 + (activeIdx.get() + 1));
+                                dumpRequestAsCurl(id, toSend, key);
                                 continue;
                             }
                             announce(
@@ -126,6 +129,7 @@ public class OcrService implements Closeable {
                                             + (keyIdx + 1)
                                             + " : "
                                             + e.getMessage());
+                            dumpRequestAsCurl(id, toSend, key);
                             throw new RuntimeException(e);
                         } catch (Exception e) {
                             announce(
@@ -135,6 +139,7 @@ public class OcrService implements Closeable {
                                             + (keyIdx + 1)
                                             + " : "
                                             + e.getMessage());
+                            dumpRequestAsCurl(id, toSend, key);
                             throw new RuntimeException(e);
                         }
                     }
@@ -174,10 +179,10 @@ public class OcrService implements Closeable {
                         .addTextBody("apikey", apiKey)
                         .addTextBody("language", "eng")
                         .addTextBody("isOverlayRequired", "false")
-                        .addTextBody("OCREngine", "2")
+                        .addTextBody("OCREngine", "3")
                         .addTextBody("scale", "true")
                         .addTextBody("detectOrientation", "false")
-                        .addBinaryBody("file", imageBytes, ContentType.IMAGE_PNG, "captcha.png")
+                        .addBinaryBody("file", imageBytes, ContentType.IMAGE_PNG, "image.png")
                         .build();
         post.setEntity(entity);
 
@@ -257,6 +262,33 @@ public class OcrService implements Closeable {
     private static String maskKey(String k) {
         if (k == null || k.isEmpty()) return "<unset>";
         return "<set len=" + k.length() + ">";
+    }
+
+    /**
+     * On failure, write the exact image bytes we sent to a temp file and emit a copy-pasteable curl
+     * command that reproduces the request. Best-effort: any IO error here is swallowed because we're
+     * already on an error path.
+     */
+    private void dumpRequestAsCurl(int id, byte[] imageBytes, String apiKey) {
+        String imageRef;
+        try {
+            Path tmp = Files.createTempFile("auto-fee-ocr-fail-" + id + "-", ".png");
+            Files.write(tmp, imageBytes);
+            imageRef = tmp.toAbsolutePath().toString();
+        } catch (Exception e) {
+            imageRef = "<unable to write " + imageBytes.length + "-byte image: " + e.getMessage() + ">";
+        }
+        String curl =
+                "curl --verbose --max-time 30 \\\n"
+                        + "  -X POST '" + endpointUrl + "' \\\n"
+                        + "  -F 'apikey=" + apiKey + "' \\\n"
+                        + "  -F 'language=eng' \\\n"
+                        + "  -F 'isOverlayRequired=false' \\\n"
+                        + "  -F 'OCREngine=3' \\\n"
+                        + "  -F 'scale=true' \\\n"
+                        + "  -F 'detectOrientation=false' \\\n"
+                        + "  -F 'file=@" + imageRef + ";type=image/png'";
+        announce("OCR id=" + id + " — reproduce with:\n" + curl);
     }
 
     @Override

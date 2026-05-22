@@ -19,6 +19,9 @@ public interface CaptchaUi {
         /** Show an error message and replace the captcha image; popup stays open for retry. */
         void showError(String message, byte[] freshImage);
 
+        /** Image bytes currently shown in the popup, or null if not available. */
+        byte[] lastImage();
+
         /** Close the popup (idempotent). */
         void close();
     }

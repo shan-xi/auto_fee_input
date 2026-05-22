@@ -46,6 +46,11 @@ public class CaptchaSession implements CaptchaUi.Session {
     }
 
     @Override
+    public byte[] lastImage() {
+        return controller.lastImage();
+    }
+
+    @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {
             Platform.runLater(

@@ -36,6 +36,9 @@ public class CaptchaController {
     private int autoAttempt = 0;
     private int emptyOcrRetries = 0;
 
+    /** Last image bytes pushed to the popup; consumed by the worker after a successful submit. */
+    private volatile byte[] lastImageBytes;
+
     public void init(
             String keyword, byte[] initialImage, Supplier<byte[]> refresher, OcrService ocr) {
         this.refresher = refresher;
@@ -181,6 +184,11 @@ public class CaptchaController {
 
     private void setImage(byte[] bytes) {
         if (bytes == null || bytes.length == 0) return;
+        lastImageBytes = bytes;
         captchaImage.setImage(new Image(new ByteArrayInputStream(bytes)));
+    }
+
+    byte[] lastImage() {
+        return lastImageBytes;
     }
 }
