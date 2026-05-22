@@ -1,3 +1,0 @@
-this feature is for user type wrong capcha verify code, a way to do again
-1. once user typo, and send, the response must fail, and then can not get final page data
-2. this pop windows should be refreshed, and let user to send again.

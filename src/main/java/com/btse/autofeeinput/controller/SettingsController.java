@@ -1,5 +1,6 @@
 package com.btse.autofeeinput.controller;
 
+import com.btse.autofeeinput.AppVersion;
 import com.btse.autofeeinput.service.OcrConfig;
 import javafx.beans.binding.BooleanBinding;
 import javafx.fxml.FXML;
@@ -46,7 +47,8 @@ public class SettingsController {
             String v = !usingDemoOnly && i < keys.size() ? keys.get(i) : "";
             fields.get(i).setText(v);
         }
-        locationLabel.setText("Saved to: " + OcrConfig.userConfigPath()
+        locationLabel.setText("App version: v" + AppVersion.value()
+                + "\nSaved to: " + OcrConfig.userConfigPath()
                 + "\nActive source: " + current.apiKeySource());
         statusLabel.setText("");
     }

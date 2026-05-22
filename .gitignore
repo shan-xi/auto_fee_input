@@ -39,3 +39,4 @@ ocr.properties
 # Local feature notes / specs — keep out of source tree
 /feature_*
 /spec
+feature/

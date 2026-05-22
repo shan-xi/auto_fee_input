@@ -70,6 +70,15 @@ jpackage \
     --mac-package-name "$APP_NAME" \
     --java-options "-Xmx512m"
 
+# Ad-hoc codesign with the built-in identity ("-"). FREE — no Apple Developer
+# account needed. It does NOT pass Gatekeeper notarization, but it stops the
+# "AutoFeeInput.app is damaged and can't be opened" / "code signature invalid"
+# errors on Apple Silicon that jpackage's unsigned bundles trigger. Users still
+# bypass Gatekeeper on first launch (see README).
+echo "==> Ad-hoc codesigning .app"
+codesign --force --deep --sign - "$OUT_DIR/$APP_NAME.app"
+codesign --verify --deep --strict --verbose=2 "$OUT_DIR/$APP_NAME.app" || true
+
 echo "==> Built: $OUT_DIR/$APP_NAME.app"
 
 if [[ "${1:-}" == "dmg" ]]; then
@@ -82,6 +91,16 @@ if [[ "${1:-}" == "dmg" ]]; then
         --dest "$OUT_DIR"
     echo "==> Built: $OUT_DIR/${APP_NAME}-${APP_VERSION}.dmg"
 fi
+
+# SHA-256 checksums let users verify the download without trusting the cert.
+echo "==> Writing SHA-256 checksums"
+(
+    cd "$OUT_DIR"
+    for f in *.dmg *.zip; do
+        [[ -f "$f" ]] || continue
+        shasum -a 256 "$f" > "$f.sha256"
+    done
+)
 
 echo
 echo "Done. Open with:  open $OUT_DIR/$APP_NAME.app"

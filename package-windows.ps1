@@ -56,29 +56,59 @@ Get-ChildItem "$StageDir\jfx-modules" -Filter 'javafx-*.jar' |
     Where-Object { $_.Name -notmatch '-win\.jar$' -and $_.Length -lt 1024 } |
     Remove-Item
 
-Write-Host "==> Running jpackage (type=$PackageType)"
 if (Test-Path $OutDir) { Remove-Item -Recurse -Force $OutDir }
 New-Item -ItemType Directory -Path $OutDir | Out-Null
 
-$jpackageArgs = @(
-    '--type',        $PackageType,
-    '--name',        $AppName,
-    '--app-version', $AppVersion,
-    '--input',       $StageDir,
-    '--main-jar',    $JarName,
-    '--main-class',  $MainClass,
-    '--module-path', "$StageDir\jfx-modules",
-    '--add-modules', 'javafx.controls,javafx.fxml,javafx.graphics,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.localedata',
-    '--dest',        $OutDir,
-    '--java-options','-Xmx512m'
-)
+# ---- Step 1: app-image (used for both the portable zip and the .exe build) ---
+Write-Host '==> Running jpackage (app-image)'
+$AppImageDir = "$OutDir\app-image"
+New-Item -ItemType Directory -Path $AppImageDir | Out-Null
+& jpackage `
+    --type app-image `
+    --name $AppName `
+    --app-version $AppVersion `
+    --input $StageDir `
+    --main-jar $JarName `
+    --main-class $MainClass `
+    --module-path "$StageDir\jfx-modules" `
+    --add-modules 'javafx.controls,javafx.fxml,javafx.graphics,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.localedata' `
+    --dest $AppImageDir `
+    --java-options '-Xmx512m'
 
+# ---- Step 2: portable zip ----------------------------------------------------
+# Extract-and-run avoids SmartScreen's "unrecognized publisher" install prompt
+# (which jpackage's unsigned .exe always triggers). Users unzip and run
+# AutoFeeInput.exe directly — far less scary than the installer warning.
+Write-Host '==> Packaging portable zip'
+$ZipPath = "$OutDir\$AppName-$AppVersion-windows-portable.zip"
+Compress-Archive -Path "$AppImageDir\$AppName" -DestinationPath $ZipPath -Force
+
+# ---- Step 3: .exe installer (Inno Setup) ------------------------------------
 if ($PackageType -eq 'exe' -or $PackageType -eq 'msi') {
-    # Add Start Menu entry + Desktop shortcut for the installed app.
-    $jpackageArgs += @('--win-shortcut', '--win-menu', '--win-dir-chooser')
+    Write-Host "==> Running jpackage (type=$PackageType)"
+    & jpackage `
+        --type $PackageType `
+        --name $AppName `
+        --app-version $AppVersion `
+        --app-image "$AppImageDir\$AppName" `
+        --dest $OutDir `
+        --win-shortcut `
+        --win-menu `
+        --win-dir-chooser
 }
 
-& jpackage @jpackageArgs
+# ---- Step 4: SHA-256 checksums ----------------------------------------------
+# Lets users verify the download without trusting the (unsigned) binary itself.
+Write-Host '==> Writing SHA-256 checksums'
+Get-ChildItem $OutDir -File |
+    Where-Object { $_.Extension -in '.exe','.msi','.zip' } |
+    ForEach-Object {
+        $hash = (Get-FileHash -Algorithm SHA256 -Path $_.FullName).Hash.ToLower()
+        "$hash  $($_.Name)" | Out-File -Encoding ascii "$($_.FullName).sha256"
+    }
+
+# Drop the staging app-image folder so only release artifacts remain.
+Remove-Item -Recurse -Force $AppImageDir
 
 Write-Host ''
 Write-Host "==> Built artifacts in $OutDir\"

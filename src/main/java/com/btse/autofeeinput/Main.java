@@ -27,7 +27,7 @@ public class Main extends Application {
         Parent root = loader.load();
         Scene scene = new Scene(root, 1200, 800);
         scene.getStylesheets().add(getClass().getResource("/styles/app.css").toExternalForm());
-        stage.setTitle("Auto Fee Input");
+        stage.setTitle("Auto Fee Input v" + AppVersion.value());
         stage.setScene(scene);
         stage.show();
     }

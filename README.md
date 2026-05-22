@@ -1,84 +1,217 @@
 # Auto Fee Input
 
-JavaFX desktop app that ingests a CSV/XLS/XLSX file, runs the
-`ap.ece.moe.edu.tw` 收費明細 lookup for each row, and writes the first 學費
-amount into a chosen column of a processed copy of the file.
+JavaFX desktop app that drives the `ap.ece.moe.edu.tw` 收費明細 lookup for
+every row of an uploaded CSV / XLS / XLSX file and writes the 學費 amount
+(formatted per 半日班 / 全日班 columns) into a column of your choosing.
 
-## Requirements
+Captchas are solved automatically via OCR.space when an API key is
+configured; otherwise the popup lets you type the code by hand.
 
-- JDK 11+ (project targets Java 11)
+---
+
+## Download
+
+Grab the latest release from the
+[**Releases page**](../../releases/latest).
+
+| Platform | File | Notes |
+|---|---|---|
+| Windows 10/11 | `AutoFeeInput-<ver>-windows-portable.zip` | **Recommended.** Extract, run `AutoFeeInput.exe`. No installer prompt. |
+| Windows 10/11 | `AutoFeeInput-<ver>.exe` | Installer with Start Menu + Desktop shortcut. SmartScreen will warn — see below. |
+| macOS (Apple Silicon) | `AutoFeeInput-<ver>.dmg` | Drag to Applications. Ad-hoc signed; Gatekeeper still asks once — see below. |
+
+Every artifact ships with a matching `.sha256` checksum file. Verify
+with `shasum -a 256 -c …sha256` (macOS / Linux) or `Get-FileHash` (Windows).
+
+---
+
+## Install — Windows
+
+The binaries are **not signed with a commercial code-signing certificate**
+(those cost ~$300/year and I'm releasing this for free). Windows
+SmartScreen will warn about the unsigned installer.
+
+### Option A — Portable zip (no warnings, recommended)
+
+1. Download `AutoFeeInput-<ver>-windows-portable.zip`.
+2. Right-click the zip → **Properties** → tick **Unblock** → OK.
+   (This clears the "Mark of the Web" flag the browser added.)
+3. Extract anywhere — e.g. `C:\Tools\AutoFeeInput`.
+4. Double-click `AutoFeeInput.exe`.
+
+### Option B — `.exe` installer
+
+1. Download `AutoFeeInput-<ver>.exe`.
+2. Double-click. Windows shows **"Windows protected your PC"**.
+3. Click **More info**, then **Run anyway**.
+4. Follow the installer — default install path is
+   `%LOCALAPPDATA%\AutoFeeInput` (per-user, no admin needed). It creates a
+   Start Menu entry and a Desktop shortcut.
+
+The installer never writes outside its install folder.
+Your Desktop / Documents / personal files are untouched.
+
+---
+
+## Install — macOS
+
+The `.dmg` is **ad-hoc codesigned** (free, no Apple Developer ID). This
+stops the "AutoFeeInput is damaged and can't be opened" error you'd
+otherwise hit on Apple Silicon, but Gatekeeper still gates the first
+launch because the app isn't notarized.
+
+1. Open the `.dmg` and drag **AutoFeeInput** into **Applications**.
+2. First launch must bypass Gatekeeper. Pick one:
+
+   - **Easiest (per launch):** Right-click `AutoFeeInput` in
+     `/Applications` → **Open** → click **Open** in the dialog.
+     macOS remembers the choice for that copy of the app.
+
+   - **One-shot (kills the quarantine flag for good):**
+     ```bash
+     sudo xattr -dr com.apple.quarantine /Applications/AutoFeeInput.app
+     ```
+
+3. After the first allow, normal double-click works.
+
+If you're on **Intel Mac**: the published `.dmg` is Apple Silicon only
+right now. Build from source (see below) with an x86_64 JDK 17.
+
+---
+
+## Usage
+
+1. **Upload File** — pick a `.csv` / `.xls` / `.xlsx`. The sheet appears
+   in section 2 with a display-only `#` row-number column.
+2. In section 1, pick:
+   - **Query column** — values sent as `txtKeyNameS`.
+   - **Fee output column** — where the result string is written.
+3. **Start**. The app runs the 6-step `ap.ece.moe.edu.tw` flow for each
+   row. When a captcha is required, a popup opens:
+   - OCR fills the box and auto-submits.
+   - If OCR returns empty, the popup auto-refreshes the captcha image
+     (up to 5 retries) before falling back to manual entry.
+   - **Refresh** loads a new captcha. **Cancel Row** skips the row.
+4. **Stop / Resume** pauses and resumes the row sequence.
+5. **Download** is available at any time — even mid-run. The exported
+   file reflects whatever fees have been filled in so far.
+
+### Fee output format
+
+The parser scans the first 收費明細 table for the row labelled
+`上學期計 6 個月`, `全學期總收費`, or `總計`, then reads the 半日班 /
+全日班 columns (colspan-aware). Output is one of:
+
+| Half-day | Full-day | Output |
+|---|---|---|
+| `94,626` | `94,626` | `學費 半日班94,626/全日班94,626` |
+| (empty)  | `94,626` | `學費 全日班94,626` |
+| `50,000` | (empty)  | `學費 半日班50,000` |
+
+Failed rows are tagged `ERR:<reason>` so they stand out in the column.
+
+### Copy from the sheet
+
+Click cells in section 2 and press **Ctrl+C** (Windows) / **Cmd+C**
+(macOS), or right-click → **Copy**. Selection is copied as TSV — paste
+into Excel / Google Sheets and the columns line up.
+
+---
+
+## Settings (OCR)
+
+Click **Settings** to open the dialog:
+
+- **Enable OCR auto-fill** — uncheck to type every captcha by hand.
+- **API Keys #1 – #10** — up to ten OCR.space keys.
+  - Key #1 is the active key.
+  - On any rate-limit error the service rotates to the next key and
+    logs the event, cycling back to #1 once all are exhausted.
+  - Leave blank to fall back to the public demo key (~20 req/hr).
+
+Keys are stored at:
+
+| OS | Path |
+|---|---|
+| macOS   | `~/Library/Application Support/AutoFeeInput/ocr.properties` |
+| Windows | `%APPDATA%\AutoFeeInput\ocr.properties` |
+| Linux   | `$XDG_CONFIG_HOME/auto-fee-input/ocr.properties` |
+
+You can also set `OCR_API_KEY` / `OCR_ENDPOINT_URL` / `OCR_ENABLED`
+environment variables — these override the settings file.
+
+Get a free OCR.space key at <https://ocr.space/ocrapi/freekey>
+(25,000 requests/month).
+
+---
+
+## Build from source
+
+### Requirements
+- JDK 11+ to run (JDK 17 needed to *build* the installer via jpackage)
 - Maven 3.6+
 - Network access to `https://ap.ece.moe.edu.tw`
 
-Your shell currently has Maven defaulting to Oracle JDK 1.8.
-Before building, point `JAVA_HOME` at a JDK 11 install — for example:
-
-```bash
-export JAVA_HOME=/Users/spin.liao/Library/Java/JavaVirtualMachines/ms-11.0.28/Contents/Home
-export PATH="$JAVA_HOME/bin:$PATH"
-mvn -version   # confirm Java 11
-```
-
-## Run (development)
-
+### Run in dev
 ```bash
 mvn clean javafx:run
 ```
 
-## Build a runnable jar
-
+### Fat jar
 ```bash
 mvn clean package
-java -jar target/auto-fee-input-*.jar
+java -jar target/auto-fee-input-1.2.0.jar
 ```
 
-## Usage
+### Native installers
+```bash
+./package-macos.sh dmg        # macOS: dist/AutoFeeInput.app + .dmg (ad-hoc signed)
+.\package-windows.ps1         # Windows: dist\*.exe + portable zip
+```
 
-1. Click **Upload File** and pick a `.csv` / `.xls` / `.xlsx`.
-2. The sheet content appears in section 2.
-3. In section 1, pick:
-   - **Query column** — the column whose values are sent as `txtKeyNameS`.
-   - **Fee output column** — where the extracted 學費 amount will be written.
-4. Click **Start**. For every row the app runs steps 1–6 of the API flow.
-5. When step 5 downloads the captcha, a popup shows the image — type the
-   code, click **Send**. The row continues automatically.
-6. After all rows finish, a `*_processed.xlsx` file is written next to the
-   source file. Click **Download** to copy it elsewhere.
+Both scripts write SHA-256 checksums alongside each artifact.
 
-### Stop / Resume
+A push of a `v*` tag triggers `.github/workflows/package-*.yml`, which
+builds release artifacts and attaches them (plus checksums) to a GitHub
+Release automatically.
 
-- **Stop** interrupts processing immediately. If a captcha popup is open it
-  is force-cancelled. The current row's fee cell is marked `ERR:cancelled`.
-- **Resume** restarts from the row that was in flight when stopped.
+---
 
 ## Project layout
 
 ```
 pom.xml
 src/main/java/com/btse/autofeeinput/
-  Main.java                 - JavaFX entry
-  Launcher.java             - fat-jar trampoline
-  model/SheetData.java      - in-memory headers + observable rows
+  Main.java                   - JavaFX entry
+  Launcher.java               - fat-jar trampoline
+  model/SheetData.java        - observable headers + rows
   service/
-    ExcelService.java       - csv/xls/xlsx read, xlsx write
-    ApiClient.java          - 6-step ap.ece.moe.edu.tw flow + fee parser
-    ProcessingService.java  - row driver with stop/pause/resume
+    ExcelService.java         - csv/xls/xlsx read, xlsx write
+    ApiClient.java            - 6-step API flow + 半日班/全日班 fee parser
+    CaptchaImageProcessor.java - PNG preprocess for OCR
+    OcrConfig.java            - 1–10 API keys + persistence
+    OcrService.java           - OCR.space client + key rotation
+    ProcessingService.java    - per-row driver, stop/pause/resume
+    CaptchaUi.java            - popup contract used by ProcessingService
   controller/
-    MainController.java     - UI wiring
-    CaptchaController.java  - captcha popup
+    MainController.java       - main window
+    CaptchaController.java    - captcha popup (OCR + auto-refresh)
+    CaptchaSession.java       - FX-thread bridge for popup ↔ worker
+    SettingsController.java   - settings dialog
 src/main/resources/
-  fxml/main.fxml
-  fxml/captcha.fxml
+  fxml/{main,captcha,settings}.fxml
   styles/app.css
   logback.xml
 ```
+
+---
 
 ## Notes
 
 - A fresh `ApiClient` is created per row, so each row owns its own
   `ASP.NET_SessionId` / `TS01c66436` cookies.
-- 學費 extraction looks for a table row whose first cell starts with `學費`
-  and returns the next numeric cell. If the page layout differs, adjust
-  `ApiClient.parseTuitionFee`.
-- Cells that fail are tagged `ERR:<reason>` so you can spot them in the
-  output file.
+- The Windows `.exe` installer uses jpackage + Inno Setup. It installs
+  to `%LOCALAPPDATA%\AutoFeeInput` by default and uninstalls cleanly
+  from "Apps & features".
+- The macOS `.app` ships its own JDK runtime under
+  `Contents/runtime/`, so end users don't need Java installed.
