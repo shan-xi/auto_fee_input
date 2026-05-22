@@ -1,11 +1,14 @@
 package com.btse.autofeeinput.controller;
 
+import com.btse.autofeeinput.AppVersion;
 import com.btse.autofeeinput.model.SheetData;
 import com.btse.autofeeinput.service.CaptchaUi;
 import com.btse.autofeeinput.service.ExcelService;
 import com.btse.autofeeinput.service.OcrConfig;
 import com.btse.autofeeinput.service.OcrService;
 import com.btse.autofeeinput.service.ProcessingService;
+import com.btse.autofeeinput.service.UpdateChecker;
+import com.btse.autofeeinput.service.UpdatePrefs;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -21,10 +24,17 @@ import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.Desktop;
 import java.io.File;
+import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
@@ -52,6 +62,14 @@ public class MainController {
     private ProcessingService processor;
     private final AtomicReference<CaptchaSession> activeCaptcha = new AtomicReference<>();
     private final CaptchaUi captchaUi = this::openCaptcha;
+    private final UpdateChecker updateChecker = new UpdateChecker();
+    private final ScheduledExecutorService updateScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "update-checker");
+        t.setDaemon(true);
+        return t;
+    });
+    /** Suppress repeated dialogs once one is open or once the user already dismissed today's check. */
+    private final AtomicBoolean updateDialogActive = new AtomicBoolean();
 
     private final SimpleDateFormat ts = new SimpleDateFormat("HH:mm:ss");
     private final SimpleDateFormat fileTs = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -71,6 +89,71 @@ public class MainController {
         feeColumnCombo.valueProperty().addListener((o, a, b) -> updateStart.run());
 
         installSheetCopySupport();
+        scheduleUpdateChecks();
+    }
+
+    /** Run an immediate background check, then re-poll every 6 hours while the app is open. */
+    private void scheduleUpdateChecks() {
+        Runnable task = () -> {
+            try {
+                Optional<UpdateChecker.Release> latest = updateChecker.fetchLatest();
+                latest.ifPresent(rel -> {
+                    String current = AppVersion.value();
+                    if (!UpdateChecker.isNewer(rel.tagName, current)) return;
+                    if (rel.tagName.equals(UpdatePrefs.skippedVersion())) return;
+                    Platform.runLater(() -> showUpdateDialog(rel, current));
+                });
+            } catch (Exception e) {
+                LOG.info("Update check error: {}", e.toString());
+            }
+        };
+        updateScheduler.schedule(task, 3, TimeUnit.SECONDS);
+        updateScheduler.scheduleAtFixedRate(task, 6, 6, TimeUnit.HOURS);
+    }
+
+    private void showUpdateDialog(UpdateChecker.Release rel, String current) {
+        if (!updateDialogActive.compareAndSet(false, true)) return;
+        try {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Update available");
+            alert.setHeaderText("A new version is available: " + rel.tagName);
+            alert.setContentText(
+                    "You are running v" + current + ".\n"
+                            + "Open the GitHub release page to download the latest installer?");
+            ButtonType openBtn = new ButtonType("Open Release Page", ButtonBar.ButtonData.YES);
+            ButtonType remindBtn = new ButtonType("Remind Me Later", ButtonBar.ButtonData.NO);
+            ButtonType skipBtn = new ButtonType("Skip This Version", ButtonBar.ButtonData.CANCEL_CLOSE);
+            alert.getButtonTypes().setAll(openBtn, remindBtn, skipBtn);
+
+            alert.showAndWait().ifPresent(choice -> {
+                if (choice == openBtn) {
+                    openInBrowser(rel.pageUrl);
+                    log("Opened release page for " + rel.tagName);
+                } else if (choice == skipBtn) {
+                    try {
+                        UpdatePrefs.setSkippedVersion(rel.tagName);
+                        log("Skipping update notifications for " + rel.tagName);
+                    } catch (Exception e) {
+                        log("Failed to save skip preference: " + e.getMessage());
+                    }
+                }
+            });
+        } finally {
+            updateDialogActive.set(false);
+        }
+    }
+
+    private void openInBrowser(String url) {
+        try {
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                Desktop.getDesktop().browse(URI.create(url));
+                return;
+            }
+        } catch (Exception e) {
+            LOG.info("Desktop.browse failed: {}", e.toString());
+        }
+        // Fallback for headless / unsupported Desktop — paste-friendly logging.
+        log("Open this URL manually: " + url);
     }
 
     /** Enables cell-level selection, Ctrl/Cmd+C copy, and a Copy context menu on the sheet. */

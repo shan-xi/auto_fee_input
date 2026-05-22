@@ -1,5 +1,9 @@
 # Auto Fee Input
 
+**Current release: v1.4.0** — see the
+[Releases page](https://github.com/shan-xi/auto_fee_input/releases) for
+binaries and changelog.
+
 JavaFX desktop app that drives the `ap.ece.moe.edu.tw` 收費明細 lookup for
 every row of an uploaded CSV / XLS / XLSX file and writes the 學費 amount
 (formatted per 半日班 / 全日班 columns) into a column of your choosing.
@@ -16,9 +20,9 @@ Grab the latest release from the
 
 | Platform | File | Notes |
 |---|---|---|
-| Windows 10/11 | `AutoFeeInput-<ver>-windows-portable.zip` | **Recommended.** Extract, run `AutoFeeInput.exe`. No installer prompt. |
-| Windows 10/11 | `AutoFeeInput-<ver>.exe` | Installer with Start Menu + Desktop shortcut. SmartScreen will warn — see below. |
-| macOS (Apple Silicon) | `AutoFeeInput-<ver>.dmg` | Drag to Applications. Ad-hoc signed; Gatekeeper still asks once — see below. |
+| Windows 10/11 | `AutoFeeInput-1.4.0-windows-portable.zip` | **Recommended.** Extract, run `AutoFeeInput.exe`. No installer prompt. |
+| Windows 10/11 | `AutoFeeInput-1.4.0.exe` | Installer with Start Menu + Desktop shortcut. SmartScreen will warn — see below. |
+| macOS (Apple Silicon) | `AutoFeeInput-1.4.0.dmg` | Drag to Applications. Ad-hoc signed; Gatekeeper still asks once — see below. |
 
 Every artifact ships with a matching `.sha256` checksum file. Verify
 with `shasum -a 256 -c …sha256` (macOS / Linux) or `Get-FileHash` (Windows).
@@ -33,7 +37,7 @@ SmartScreen will warn about the unsigned installer.
 
 ### Option A — Portable zip (no warnings, recommended)
 
-1. Download `AutoFeeInput-<ver>-windows-portable.zip`.
+1. Download `AutoFeeInput-1.4.0-windows-portable.zip`.
 2. Right-click the zip → **Properties** → tick **Unblock** → OK.
    (This clears the "Mark of the Web" flag the browser added.)
 3. Extract anywhere — e.g. `C:\Tools\AutoFeeInput`.
@@ -41,7 +45,7 @@ SmartScreen will warn about the unsigned installer.
 
 ### Option B — `.exe` installer
 
-1. Download `AutoFeeInput-<ver>.exe`.
+1. Download `AutoFeeInput-1.4.0.exe`.
 2. Double-click. Windows shows **"Windows protected your PC"**.
 3. Click **More info**, then **Run anyway**.
 4. Follow the installer — default install path is
@@ -116,6 +120,21 @@ Click cells in section 2 and press **Ctrl+C** (Windows) / **Cmd+C**
 (macOS), or right-click → **Copy**. Selection is copied as TSV — paste
 into Excel / Google Sheets and the columns line up.
 
+### Update notifications
+
+A few seconds after launch (and every 6 hours while the app stays open)
+the app checks `api.github.com` for the latest release. When the tag is
+newer than your running version a dialog offers:
+
+- **Open Release Page** — launches your browser at the GitHub releases
+  page so you can grab the new installer.
+- **Remind Me Later** — dismiss; you'll see it again on the next check.
+- **Skip This Version** — saved to `app.properties` in the per-user
+  config dir; no more prompts for that exact tag.
+
+The running version is shown in the window title bar and in the
+Settings dialog header.
+
 ---
 
 ## Settings (OCR)
@@ -160,7 +179,7 @@ mvn clean javafx:run
 ### Fat jar
 ```bash
 mvn clean package
-java -jar target/auto-fee-input-1.2.0.jar
+java -jar target/auto-fee-input-1.4.0.jar
 ```
 
 ### Native installers
@@ -182,8 +201,9 @@ Release automatically.
 ```
 pom.xml
 src/main/java/com/btse/autofeeinput/
-  Main.java                   - JavaFX entry
+  Main.java                   - JavaFX entry; sets window title with version
   Launcher.java               - fat-jar trampoline
+  AppVersion.java             - reads META-INF/auto-fee-input-version.properties
   model/SheetData.java        - observable headers + rows
   service/
     ExcelService.java         - csv/xls/xlsx read, xlsx write
@@ -193,12 +213,15 @@ src/main/java/com/btse/autofeeinput/
     OcrService.java           - OCR.space client + key rotation
     ProcessingService.java    - per-row driver, stop/pause/resume
     CaptchaUi.java            - popup contract used by ProcessingService
+    UpdateChecker.java        - polls GitHub releases for newer tag
+    UpdatePrefs.java          - persists "skip this version" choice
   controller/
-    MainController.java       - main window
+    MainController.java       - main window + update-check scheduler
     CaptchaController.java    - captcha popup (OCR + auto-refresh)
     CaptchaSession.java       - FX-thread bridge for popup ↔ worker
     SettingsController.java   - settings dialog
 src/main/resources/
+  META-INF/auto-fee-input-version.properties  - filtered by Maven at build
   fxml/{main,captcha,settings}.fxml
   styles/app.css
   logback.xml
