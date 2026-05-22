@@ -1,18 +1,5 @@
 package com.btse.autofeeinput.service;
 
-import org.apache.hc.client5.http.classic.methods.HttpPost;
-import org.apache.hc.client5.http.config.RequestConfig;
-import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ContentType;
-import org.apache.hc.core5.http.io.entity.EntityUtils;
-import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.util.Timeout;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -23,11 +10,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.util.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Sends captcha images to an OCR.space-compatible REST endpoint and returns
- * the parsed text. Default endpoint + demo API key live in {@link OcrConfig}.
- * Calls run on the common ForkJoinPool — safe to invoke from any thread.
+ * Sends captcha images to an OCR.space-compatible REST endpoint and returns the parsed text.
+ * Default endpoint + demo API key live in {@link OcrConfig}. Calls run on the common ForkJoinPool —
+ * safe to invoke from any thread.
  */
 public class OcrService implements Closeable {
 
@@ -38,7 +37,8 @@ public class OcrService implements Closeable {
     private static final Pattern IS_ERRORED =
             Pattern.compile("\"IsErroredOnProcessing\"\\s*:\\s*(true|false)");
     private static final Pattern ERR_MSG =
-            Pattern.compile("\"ErrorMessage\"\\s*:\\s*(?:\\[\\s*\"((?:[^\"\\\\]|\\\\.)*)\"|\"((?:[^\"\\\\]|\\\\.)*)\")");
+            Pattern.compile(
+                    "\"ErrorMessage\"\\s*:\\s*(?:\\[\\s*\"((?:[^\"\\\\]|\\\\.)*)\"|\"((?:[^\"\\\\]|\\\\.)*)\")");
 
     private final String endpointUrl;
     private final List<String> apiKeys;
@@ -54,8 +54,14 @@ public class OcrService implements Closeable {
         this.apiKeys = keys;
         this.uiLog = uiLog == null ? s -> {} : uiLog;
         this.http = HttpClients.createDefault();
-        announce("OCR ready (provider=ocr.space url=" + endpointUrl
-                + " keys=" + apiKeys.size() + " active=#1 firstKey=" + maskKey(apiKeys.get(0)) + ")");
+        announce(
+                "OCR ready (provider=ocr.space url="
+                        + endpointUrl
+                        + " keys="
+                        + apiKeys.size()
+                        + " active=#1 firstKey="
+                        + maskKey(apiKeys.get(0))
+                        + ")");
     }
 
     /** Returns the raw recognized text. Caller cleans whitespace/punctuation. */
@@ -73,42 +79,69 @@ public class OcrService implements Closeable {
             payload = CaptchaImageProcessor.preprocess(imageBytes);
             announce("OCR id=" + id + " preprocessed bytes=" + payload.length);
         } catch (Exception e) {
-            announce("OCR id=" + id + " preprocess failed (" + e.getMessage() + "), using raw image");
+            announce(
+                    "OCR id="
+                            + id
+                            + " preprocess failed ("
+                            + e.getMessage()
+                            + "), using raw image");
             payload = imageBytes;
         }
         final byte[] toSend = payload;
 
-        return CompletableFuture.supplyAsync(() -> {
-            int attempts = Math.max(1, apiKeys.size());
-            IOException lastErr = null;
-            for (int i = 0; i < attempts; i++) {
-                int keyIdx = activeIdx.get();
-                String key = apiKeys.get(keyIdx);
-                try {
-                    String text = call(id, toSend, timeoutMs, key);
-                    announce("OCR result id=" + id + " key=#" + (keyIdx + 1)
-                            + " text=" + text.replace("\n", "\\n"));
-                    return text;
-                } catch (IOException e) {
-                    lastErr = e;
-                    if (isRateLimit(e) && apiKeys.size() > 1) {
-                        int next = (keyIdx + 1) % apiKeys.size();
-                        // Only rotate if no other thread already advanced past keyIdx.
-                        activeIdx.compareAndSet(keyIdx, next);
-                        announce("OCR rate-limited on key #" + (keyIdx + 1)
-                                + " — rotating to key #" + (activeIdx.get() + 1));
-                        continue;
+        return CompletableFuture.supplyAsync(
+                () -> {
+                    int attempts = Math.max(1, apiKeys.size());
+                    IOException lastErr = null;
+                    for (int i = 0; i < attempts; i++) {
+                        int keyIdx = activeIdx.get();
+                        String key = apiKeys.get(keyIdx);
+                        try {
+                            String text = call(id, toSend, timeoutMs, key);
+                            announce(
+                                    "OCR result id="
+                                            + id
+                                            + " key=#"
+                                            + (keyIdx + 1)
+                                            + " text="
+                                            + text.replace("\n", "\\n"));
+                            return text;
+                        } catch (IOException e) {
+                            lastErr = e;
+                            if (isRateLimit(e) && apiKeys.size() > 1) {
+                                int next = (keyIdx + 1) % apiKeys.size();
+                                // Only rotate if no other thread already advanced past keyIdx.
+                                activeIdx.compareAndSet(keyIdx, next);
+                                announce(
+                                        "OCR rate-limited on key #"
+                                                + (keyIdx + 1)
+                                                + " — rotating to key #"
+                                                + (activeIdx.get() + 1));
+                                continue;
+                            }
+                            announce(
+                                    "OCR error id="
+                                            + id
+                                            + " key=#"
+                                            + (keyIdx + 1)
+                                            + " : "
+                                            + e.getMessage());
+                            throw new RuntimeException(e);
+                        } catch (Exception e) {
+                            announce(
+                                    "OCR error id="
+                                            + id
+                                            + " key=#"
+                                            + (keyIdx + 1)
+                                            + " : "
+                                            + e.getMessage());
+                            throw new RuntimeException(e);
+                        }
                     }
-                    announce("OCR error id=" + id + " key=#" + (keyIdx + 1) + " : " + e.getMessage());
-                    throw new RuntimeException(e);
-                } catch (Exception e) {
-                    announce("OCR error id=" + id + " key=#" + (keyIdx + 1) + " : " + e.getMessage());
-                    throw new RuntimeException(e);
-                }
-            }
-            announce("OCR id=" + id + " : all " + apiKeys.size() + " keys rate-limited");
-            throw new RuntimeException(lastErr != null ? lastErr : new IOException("all keys exhausted"));
-        });
+                    announce("OCR id=" + id + " : all " + apiKeys.size() + " keys rate-limited");
+                    throw new RuntimeException(
+                            lastErr != null ? lastErr : new IOException("all keys exhausted"));
+                });
     }
 
     static boolean isRateLimit(Throwable t) {
@@ -125,24 +158,27 @@ public class OcrService implements Closeable {
                 || lower.contains("http 403");
     }
 
-    private String call(int id, byte[] imageBytes, long timeoutMs, String apiKey) throws IOException {
-        RequestConfig cfg = RequestConfig.custom()
-                .setConnectTimeout(Timeout.ofMilliseconds(Math.max(2000, timeoutMs / 4)))
-                .setResponseTimeout(Timeout.ofMilliseconds(timeoutMs))
-                .build();
+    private String call(int id, byte[] imageBytes, long timeoutMs, String apiKey)
+            throws IOException {
+        RequestConfig cfg =
+                RequestConfig.custom()
+                        .setConnectTimeout(Timeout.ofMilliseconds(Math.max(2000, timeoutMs / 4)))
+                        .setResponseTimeout(Timeout.ofMilliseconds(timeoutMs))
+                        .build();
 
         HttpPost post = new HttpPost(endpointUrl);
         post.setConfig(cfg);
 
-        HttpEntity entity = MultipartEntityBuilder.create()
-                .addTextBody("apikey", apiKey)
-                .addTextBody("language", "eng")
-                .addTextBody("isOverlayRequired", "false")
-                .addTextBody("OCREngine", "2")
-                .addTextBody("scale", "true")
-                .addTextBody("detectOrientation", "false")
-                .addBinaryBody("file", imageBytes, ContentType.IMAGE_PNG, "captcha.png")
-                .build();
+        HttpEntity entity =
+                MultipartEntityBuilder.create()
+                        .addTextBody("apikey", apiKey)
+                        .addTextBody("language", "eng")
+                        .addTextBody("isOverlayRequired", "false")
+                        .addTextBody("OCREngine", "2")
+                        .addTextBody("scale", "true")
+                        .addTextBody("detectOrientation", "false")
+                        .addBinaryBody("file", imageBytes, ContentType.IMAGE_PNG, "captcha.png")
+                        .build();
         post.setEntity(entity);
 
         try (CloseableHttpResponse resp = http.execute(post)) {
@@ -178,12 +214,24 @@ public class OcrService implements Closeable {
             if (c == '\\' && i + 1 < s.length()) {
                 char n = s.charAt(++i);
                 switch (n) {
-                    case 'n': b.append('\n'); break;
-                    case 'r': b.append('\r'); break;
-                    case 't': b.append('\t'); break;
-                    case '"': b.append('"'); break;
-                    case '\\': b.append('\\'); break;
-                    case '/': b.append('/'); break;
+                    case 'n':
+                        b.append('\n');
+                        break;
+                    case 'r':
+                        b.append('\r');
+                        break;
+                    case 't':
+                        b.append('\t');
+                        break;
+                    case '"':
+                        b.append('"');
+                        break;
+                    case '\\':
+                        b.append('\\');
+                        break;
+                    case '/':
+                        b.append('/');
+                        break;
                     case 'u':
                         if (i + 4 < s.length()) {
                             try {
@@ -196,7 +244,8 @@ public class OcrService implements Closeable {
                             b.append(n);
                         }
                         break;
-                    default: b.append(n);
+                    default:
+                        b.append(n);
                 }
             } else {
                 b.append(c);

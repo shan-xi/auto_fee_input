@@ -9,6 +9,19 @@ import com.btse.autofeeinput.service.OcrService;
 import com.btse.autofeeinput.service.ProcessingService;
 import com.btse.autofeeinput.service.UpdateChecker;
 import com.btse.autofeeinput.service.UpdatePrefs;
+import java.awt.Desktop;
+import java.io.File;
+import java.net.URI;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -23,20 +36,6 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.awt.Desktop;
-import java.io.File;
-import java.net.URI;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 public class MainController {
 
@@ -63,12 +62,17 @@ public class MainController {
     private final AtomicReference<CaptchaSession> activeCaptcha = new AtomicReference<>();
     private final CaptchaUi captchaUi = this::openCaptcha;
     private final UpdateChecker updateChecker = new UpdateChecker();
-    private final ScheduledExecutorService updateScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-        Thread t = new Thread(r, "update-checker");
-        t.setDaemon(true);
-        return t;
-    });
-    /** Suppress repeated dialogs once one is open or once the user already dismissed today's check. */
+    private final ScheduledExecutorService updateScheduler =
+            Executors.newSingleThreadScheduledExecutor(
+                    r -> {
+                        Thread t = new Thread(r, "update-checker");
+                        t.setDaemon(true);
+                        return t;
+                    });
+
+    /**
+     * Suppress repeated dialogs once one is open or once the user already dismissed today's check.
+     */
     private final AtomicBoolean updateDialogActive = new AtomicBoolean();
 
     private final SimpleDateFormat ts = new SimpleDateFormat("HH:mm:ss");
@@ -80,11 +84,13 @@ public class MainController {
         queryColumnCombo.disableProperty().bind(sheetTable.itemsProperty().isNull());
         feeColumnCombo.disableProperty().bind(sheetTable.itemsProperty().isNull());
 
-        Runnable updateStart = () ->
-                startBtn.setDisable(sheetData == null
-                        || queryColumnCombo.getValue() == null
-                        || feeColumnCombo.getValue() == null
-                        || workerRunning());
+        Runnable updateStart =
+                () ->
+                        startBtn.setDisable(
+                                sheetData == null
+                                        || queryColumnCombo.getValue() == null
+                                        || feeColumnCombo.getValue() == null
+                                        || workerRunning());
         queryColumnCombo.valueProperty().addListener((o, a, b) -> updateStart.run());
         feeColumnCombo.valueProperty().addListener((o, a, b) -> updateStart.run());
 
@@ -94,19 +100,21 @@ public class MainController {
 
     /** Run an immediate background check, then re-poll every 6 hours while the app is open. */
     private void scheduleUpdateChecks() {
-        Runnable task = () -> {
-            try {
-                Optional<UpdateChecker.Release> latest = updateChecker.fetchLatest();
-                latest.ifPresent(rel -> {
-                    String current = AppVersion.value();
-                    if (!UpdateChecker.isNewer(rel.tagName, current)) return;
-                    if (rel.tagName.equals(UpdatePrefs.skippedVersion())) return;
-                    Platform.runLater(() -> showUpdateDialog(rel, current));
-                });
-            } catch (Exception e) {
-                LOG.info("Update check error: {}", e.toString());
-            }
-        };
+        Runnable task =
+                () -> {
+                    try {
+                        Optional<UpdateChecker.Release> latest = updateChecker.fetchLatest();
+                        latest.ifPresent(
+                                rel -> {
+                                    String current = AppVersion.value();
+                                    if (!UpdateChecker.isNewer(rel.tagName, current)) return;
+                                    if (rel.tagName.equals(UpdatePrefs.skippedVersion())) return;
+                                    Platform.runLater(() -> showUpdateDialog(rel, current));
+                                });
+                    } catch (Exception e) {
+                        LOG.info("Update check error: {}", e.toString());
+                    }
+                };
         updateScheduler.schedule(task, 3, TimeUnit.SECONDS);
         updateScheduler.scheduleAtFixedRate(task, 6, 6, TimeUnit.HOURS);
     }
@@ -118,26 +126,31 @@ public class MainController {
             alert.setTitle("Update available");
             alert.setHeaderText("A new version is available: " + rel.tagName);
             alert.setContentText(
-                    "You are running v" + current + ".\n"
+                    "You are running v"
+                            + current
+                            + ".\n"
                             + "Open the GitHub release page to download the latest installer?");
             ButtonType openBtn = new ButtonType("Open Release Page", ButtonBar.ButtonData.YES);
             ButtonType remindBtn = new ButtonType("Remind Me Later", ButtonBar.ButtonData.NO);
-            ButtonType skipBtn = new ButtonType("Skip This Version", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType skipBtn =
+                    new ButtonType("Skip This Version", ButtonBar.ButtonData.CANCEL_CLOSE);
             alert.getButtonTypes().setAll(openBtn, remindBtn, skipBtn);
 
-            alert.showAndWait().ifPresent(choice -> {
-                if (choice == openBtn) {
-                    openInBrowser(rel.pageUrl);
-                    log("Opened release page for " + rel.tagName);
-                } else if (choice == skipBtn) {
-                    try {
-                        UpdatePrefs.setSkippedVersion(rel.tagName);
-                        log("Skipping update notifications for " + rel.tagName);
-                    } catch (Exception e) {
-                        log("Failed to save skip preference: " + e.getMessage());
-                    }
-                }
-            });
+            alert.showAndWait()
+                    .ifPresent(
+                            choice -> {
+                                if (choice == openBtn) {
+                                    openInBrowser(rel.pageUrl);
+                                    log("Opened release page for " + rel.tagName);
+                                } else if (choice == skipBtn) {
+                                    try {
+                                        UpdatePrefs.setSkippedVersion(rel.tagName);
+                                        log("Skipping update notifications for " + rel.tagName);
+                                    } catch (Exception e) {
+                                        log("Failed to save skip preference: " + e.getMessage());
+                                    }
+                                }
+                            });
         } finally {
             updateDialogActive.set(false);
         }
@@ -145,7 +158,8 @@ public class MainController {
 
     private void openInBrowser(String url) {
         try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            if (Desktop.isDesktopSupported()
+                    && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(URI.create(url));
                 return;
             }
@@ -159,16 +173,22 @@ public class MainController {
     /** Enables cell-level selection, Ctrl/Cmd+C copy, and a Copy context menu on the sheet. */
     private void installSheetCopySupport() {
         sheetTable.getSelectionModel().setCellSelectionEnabled(true);
-        sheetTable.getSelectionModel().setSelectionMode(javafx.scene.control.SelectionMode.MULTIPLE);
+        sheetTable
+                .getSelectionModel()
+                .setSelectionMode(javafx.scene.control.SelectionMode.MULTIPLE);
 
-        javafx.scene.input.KeyCombination copyShortcut = new javafx.scene.input.KeyCodeCombination(
-                javafx.scene.input.KeyCode.C, javafx.scene.input.KeyCombination.SHORTCUT_DOWN);
-        sheetTable.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, e -> {
-            if (copyShortcut.match(e)) {
-                copySelectionToClipboard();
-                e.consume();
-            }
-        });
+        javafx.scene.input.KeyCombination copyShortcut =
+                new javafx.scene.input.KeyCodeCombination(
+                        javafx.scene.input.KeyCode.C,
+                        javafx.scene.input.KeyCombination.SHORTCUT_DOWN);
+        sheetTable.addEventFilter(
+                javafx.scene.input.KeyEvent.KEY_PRESSED,
+                e -> {
+                    if (copyShortcut.match(e)) {
+                        copySelectionToClipboard();
+                        e.consume();
+                    }
+                });
 
         MenuItem copyItem = new MenuItem("Copy");
         copyItem.setAccelerator(copyShortcut);
@@ -177,22 +197,28 @@ public class MainController {
     }
 
     /**
-     * Copies the current selection to the clipboard as TSV. Cells from the same
-     * row are tab-separated; rows are newline-separated. Empty selection no-ops.
+     * Copies the current selection to the clipboard as TSV. Cells from the same row are
+     * tab-separated; rows are newline-separated. Empty selection no-ops.
      */
     private void copySelectionToClipboard() {
         var selected = sheetTable.getSelectionModel().getSelectedCells();
         if (selected.isEmpty()) return;
 
-        java.util.TreeMap<Integer, java.util.TreeMap<Integer, String>> grid = new java.util.TreeMap<>();
+        java.util.TreeMap<Integer, java.util.TreeMap<Integer, String>> grid =
+                new java.util.TreeMap<>();
         for (var pos : selected) {
             int rowIdx = pos.getRow();
             int colIdx = pos.getColumn();
             if (rowIdx < 0 || colIdx < 0) continue;
             String text = "";
-            Object cellValue = pos.getTableColumn() == null ? null
-                    : pos.getTableColumn().getCellObservableValue(rowIdx) == null
-                            ? null : pos.getTableColumn().getCellObservableValue(rowIdx).getValue();
+            Object cellValue =
+                    pos.getTableColumn() == null
+                            ? null
+                            : pos.getTableColumn().getCellObservableValue(rowIdx) == null
+                                    ? null
+                                    : pos.getTableColumn()
+                                            .getCellObservableValue(rowIdx)
+                                            .getValue();
             if (cellValue != null) text = cellValue.toString();
             grid.computeIfAbsent(rowIdx, k -> new java.util.TreeMap<>()).put(colIdx, text);
         }
@@ -226,8 +252,8 @@ public class MainController {
     private void onUpload() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Select Excel/CSV File");
-        chooser.getExtensionFilters().add(
-                new FileChooser.ExtensionFilter("Spreadsheets", "*.csv", "*.xls", "*.xlsx"));
+        chooser.getExtensionFilters()
+                .add(new FileChooser.ExtensionFilter("Spreadsheets", "*.csv", "*.xls", "*.xlsx"));
         File f = chooser.showOpenDialog(uploadBtn.getScene().getWindow());
         if (f == null) return;
         loadFile(f);
@@ -242,7 +268,12 @@ public class MainController {
             populateComboBoxes(sheetData);
             downloadBtn.setDisable(false);
             statusLabel.setText("Loaded " + sheetData.getRows().size() + " rows.");
-            log("Loaded file: " + f.getAbsolutePath() + " (rows=" + sheetData.getRows().size() + ")");
+            log(
+                    "Loaded file: "
+                            + f.getAbsolutePath()
+                            + " (rows="
+                            + sheetData.getRows().size()
+                            + ")");
         } catch (Exception e) {
             error("Failed to read file: " + e.getMessage());
         }
@@ -253,22 +284,25 @@ public class MainController {
 
         // Display-only row number column — not part of SheetData, not saved on download.
         TableColumn<ObservableList<String>, String> rowNumCol = new TableColumn<>("#");
-        rowNumCol.setCellValueFactory(cd -> {
-            int idx = sheetTable.getItems().indexOf(cd.getValue());
-            return new SimpleStringProperty(idx < 0 ? "" : String.valueOf(idx + 1));
-        });
+        rowNumCol.setCellValueFactory(
+                cd -> {
+                    int idx = sheetTable.getItems().indexOf(cd.getValue());
+                    return new SimpleStringProperty(idx < 0 ? "" : String.valueOf(idx + 1));
+                });
         rowNumCol.setSortable(false);
         rowNumCol.setPrefWidth(56);
         sheetTable.getColumns().add(rowNumCol);
 
         for (int i = 0; i < data.getHeaders().size(); i++) {
             final int colIdx = i;
-            TableColumn<ObservableList<String>, String> col = new TableColumn<>(data.getHeaders().get(i));
-            col.setCellValueFactory(cd -> {
-                ObservableList<String> row = cd.getValue();
-                String v = colIdx < row.size() ? row.get(colIdx) : "";
-                return new SimpleStringProperty(v);
-            });
+            TableColumn<ObservableList<String>, String> col =
+                    new TableColumn<>(data.getHeaders().get(i));
+            col.setCellValueFactory(
+                    cd -> {
+                        ObservableList<String> row = cd.getValue();
+                        String v = colIdx < row.size() ? row.get(colIdx) : "";
+                        return new SimpleStringProperty(v);
+                    });
             col.setPrefWidth(140);
             sheetTable.getColumns().add(col);
         }
@@ -343,37 +377,62 @@ public class MainController {
         resumeBtn.setDisable(true);
         uploadBtn.setDisable(true);
 
-        processor = new ProcessingService(sheetData, qIdx, fIdx, captchaUi, new ProcessingService.Listener() {
-            @Override public void onRowStart(int rowIndex, String keyword) {
-                Platform.runLater(() -> statusLabel.setText("Row " + (rowIndex + 1) + ": " + keyword));
-            }
-            @Override public void onRowDone(int rowIndex, String fee) {
-                Platform.runLater(() -> {
-                    sheetData.setCell(rowIndex, fIdx, fee == null ? "" : fee);
-                    refreshFeeColumn();
-                });
-            }
-            @Override public void onRowError(int rowIndex, String keyword, String message) {
-                Platform.runLater(() -> {
-                    sheetData.setCell(rowIndex, fIdx, "ERR:" + (message == null ? "" : message));
-                    refreshFeeColumn();
-                    log("Row " + (rowIndex + 1) + " error: " + message);
-                });
-            }
-            @Override public void log(String message) {
-                Platform.runLater(() -> MainController.this.log(message));
-            }
-        });
+        processor =
+                new ProcessingService(
+                        sheetData,
+                        qIdx,
+                        fIdx,
+                        captchaUi,
+                        new ProcessingService.Listener() {
+                            @Override
+                            public void onRowStart(int rowIndex, String keyword) {
+                                Platform.runLater(
+                                        () ->
+                                                statusLabel.setText(
+                                                        "Row " + (rowIndex + 1) + ": " + keyword));
+                            }
 
-        workerThread = new Thread(() -> {
-            try {
-                processor.run(startRow);
-            } catch (Exception e) {
-                Platform.runLater(() -> error("Worker crashed: " + e.getMessage()));
-            } finally {
-                Platform.runLater(this::afterWorkerEnded);
-            }
-        }, "fee-worker");
+                            @Override
+                            public void onRowDone(int rowIndex, String fee) {
+                                Platform.runLater(
+                                        () -> {
+                                            sheetData.setCell(
+                                                    rowIndex, fIdx, fee == null ? "" : fee);
+                                            refreshFeeColumn();
+                                        });
+                            }
+
+                            @Override
+                            public void onRowError(int rowIndex, String keyword, String message) {
+                                Platform.runLater(
+                                        () -> {
+                                            sheetData.setCell(
+                                                    rowIndex,
+                                                    fIdx,
+                                                    "ERR:" + (message == null ? "" : message));
+                                            refreshFeeColumn();
+                                            log("Row " + (rowIndex + 1) + " error: " + message);
+                                        });
+                            }
+
+                            @Override
+                            public void log(String message) {
+                                Platform.runLater(() -> MainController.this.log(message));
+                            }
+                        });
+
+        workerThread =
+                new Thread(
+                        () -> {
+                            try {
+                                processor.run(startRow);
+                            } catch (Exception e) {
+                                Platform.runLater(() -> error("Worker crashed: " + e.getMessage()));
+                            } finally {
+                                Platform.runLater(this::afterWorkerEnded);
+                            }
+                        },
+                        "fee-worker");
         workerThread.setDaemon(true);
         workerThread.start();
     }
@@ -451,8 +510,11 @@ public class MainController {
         } else {
             try {
                 ocrService = new OcrService(cfg, msg -> Platform.runLater(() -> log(msg)));
-                log("OCR enabled (Settings) — keys=" + cfg.apiKeys().size()
-                        + " source: " + cfg.apiKeySource());
+                log(
+                        "OCR enabled (Settings) — keys="
+                                + cfg.apiKeys().size()
+                                + " source: "
+                                + cfg.apiKeySource());
             } catch (Throwable t) {
                 log("OCR init failed (manual entry only): " + t);
                 LOG.error("OCR init failed", t);
@@ -466,32 +528,35 @@ public class MainController {
         return workerThread != null && workerThread.isAlive();
     }
 
-    private CaptchaUi.Session openCaptcha(String keyword, byte[] initialImage, Supplier<byte[]> refresher)
+    private CaptchaUi.Session openCaptcha(
+            String keyword, byte[] initialImage, Supplier<byte[]> refresher)
             throws InterruptedException {
         CompletableFuture<CaptchaSession> future = new CompletableFuture<>();
-        Platform.runLater(() -> {
-            try {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/captcha.fxml"));
-                Parent root = loader.load();
-                CaptchaController controller = loader.getController();
-                controller.init(keyword, initialImage, refresher, ocrService);
+        Platform.runLater(
+                () -> {
+                    try {
+                        FXMLLoader loader =
+                                new FXMLLoader(getClass().getResource("/fxml/captcha.fxml"));
+                        Parent root = loader.load();
+                        CaptchaController controller = loader.getController();
+                        controller.init(keyword, initialImage, refresher, ocrService);
 
-                Stage stage = new Stage();
-                stage.initModality(Modality.NONE);
-                stage.setTitle("Captcha: " + keyword);
-                stage.setScene(new Scene(root));
-                stage.setAlwaysOnTop(true);
+                        Stage stage = new Stage();
+                        stage.initModality(Modality.NONE);
+                        stage.setTitle("Captcha: " + keyword);
+                        stage.setScene(new Scene(root));
+                        stage.setAlwaysOnTop(true);
 
-                CaptchaSession session = new CaptchaSession(stage, controller);
-                stage.setOnCloseRequest(e -> session.cancelExternally());
-                stage.setOnHidden(e -> activeCaptcha.compareAndSet(session, null));
-                activeCaptcha.set(session);
-                stage.show();
-                future.complete(session);
-            } catch (Exception e) {
-                future.completeExceptionally(e);
-            }
-        });
+                        CaptchaSession session = new CaptchaSession(stage, controller);
+                        stage.setOnCloseRequest(e -> session.cancelExternally());
+                        stage.setOnHidden(e -> activeCaptcha.compareAndSet(session, null));
+                        activeCaptcha.set(session);
+                        stage.show();
+                        future.complete(session);
+                    } catch (Exception e) {
+                        future.completeExceptionally(e);
+                    }
+                });
         try {
             return future.get();
         } catch (InterruptedException ie) {

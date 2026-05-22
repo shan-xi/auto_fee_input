@@ -1,14 +1,13 @@
 package com.btse.autofeeinput.model;
 
+import java.util.ArrayList;
+import java.util.List;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * Holds the headers and data rows of the uploaded sheet.
- * Rows are ObservableList<String> so they bind directly to TableView.
+ * Holds the headers and data rows of the uploaded sheet. Rows are ObservableList<String> so they
+ * bind directly to TableView.
  */
 public class SheetData {
 

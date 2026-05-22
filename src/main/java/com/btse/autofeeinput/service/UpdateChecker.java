@@ -1,5 +1,9 @@
 package com.btse.autofeeinput.service;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -10,16 +14,10 @@ import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 /**
- * Polls the GitHub Releases API for the latest published release and compares
- * its tag with the running app's version. Stateless and dependency-free
- * beyond the project's existing httpclient5 dep.
+ * Polls the GitHub Releases API for the latest published release and compares its tag with the
+ * running app's version. Stateless and dependency-free beyond the project's existing httpclient5
+ * dep.
  */
 public final class UpdateChecker {
 
@@ -37,12 +35,18 @@ public final class UpdateChecker {
 
     private final String apiUrl;
 
-    public UpdateChecker() { this(DEFAULT_API_URL); }
-    public UpdateChecker(String apiUrl) { this.apiUrl = apiUrl; }
+    public UpdateChecker() {
+        this(DEFAULT_API_URL);
+    }
+
+    public UpdateChecker(String apiUrl) {
+        this.apiUrl = apiUrl;
+    }
 
     public static final class Release {
-        public final String tagName;   // e.g. "v1.3.1"
-        public final String pageUrl;   // GitHub release page URL
+        public final String tagName; // e.g. "v1.3.1"
+        public final String pageUrl; // GitHub release page URL
+
         public Release(String tagName, String pageUrl) {
             this.tagName = tagName;
             this.pageUrl = pageUrl;
@@ -51,14 +55,16 @@ public final class UpdateChecker {
 
     /** Hits the GitHub API. Returns empty on any failure — never throws. */
     public Optional<Release> fetchLatest() {
-        RequestConfig cfg = RequestConfig.custom()
-                .setConnectTimeout(Timeout.ofSeconds(5))
-                .setResponseTimeout(Timeout.ofSeconds(10))
-                .build();
-        try (CloseableHttpClient http = HttpClients.custom()
-                .setDefaultRequestConfig(cfg)
-                .setUserAgent("AutoFeeInput-UpdateChecker")
-                .build()) {
+        RequestConfig cfg =
+                RequestConfig.custom()
+                        .setConnectTimeout(Timeout.ofSeconds(5))
+                        .setResponseTimeout(Timeout.ofSeconds(10))
+                        .build();
+        try (CloseableHttpClient http =
+                HttpClients.custom()
+                        .setDefaultRequestConfig(cfg)
+                        .setUserAgent("AutoFeeInput-UpdateChecker")
+                        .build()) {
             HttpGet req = new HttpGet(apiUrl);
             req.addHeader("Accept", "application/vnd.github+json");
             try (CloseableHttpResponse resp = http.execute(req)) {
@@ -88,10 +94,10 @@ public final class UpdateChecker {
     }
 
     /**
-     * Returns true when {@code latestTag} is strictly newer than {@code current}.
-     * Strips a leading "v"; compares each dot-separated segment numerically when
-     * possible, falling back to lexical compare. Non-numeric tail (e.g. "-rc1")
-     * is treated as older than the same prefix without a tail.
+     * Returns true when {@code latestTag} is strictly newer than {@code current}. Strips a leading
+     * "v"; compares each dot-separated segment numerically when possible, falling back to lexical
+     * compare. Non-numeric tail (e.g. "-rc1") is treated as older than the same prefix without a
+     * tail.
      */
     public static boolean isNewer(String latestTag, String current) {
         if (latestTag == null || latestTag.isEmpty()) return false;
@@ -115,15 +121,21 @@ public final class UpdateChecker {
         int end = v.length();
         for (int i = 0; i < v.length(); i++) {
             char ch = v.charAt(i);
-            if (ch != '.' && !Character.isDigit(ch)) { end = i; break; }
+            if (ch != '.' && !Character.isDigit(ch)) {
+                end = i;
+                break;
+            }
         }
         v = v.substring(0, end);
         if (v.isEmpty()) return new int[0];
         String[] parts = v.split("\\.");
         int[] out = new int[parts.length];
         for (int i = 0; i < parts.length; i++) {
-            try { out[i] = Integer.parseInt(parts[i]); }
-            catch (NumberFormatException e) { out[i] = 0; }
+            try {
+                out[i] = Integer.parseInt(parts[i]);
+            } catch (NumberFormatException e) {
+                out[i] = 0;
+            }
         }
         return out;
     }

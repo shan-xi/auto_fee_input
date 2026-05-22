@@ -1,18 +1,17 @@
 package com.btse.autofeeinput.service;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import javax.imageio.ImageIO;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import javax.imageio.ImageIO;
+import org.junit.jupiter.api.Test;
 
 class CaptchaImageProcessorTest {
 
@@ -37,7 +36,8 @@ class CaptchaImageProcessorTest {
         for (int y = 0; y < out.getHeight(); y++) {
             for (int x = 0; x < out.getWidth(); x++) {
                 int v = r.getSample(x, y, 0);
-                assertTrue(v == 0 || v == 255, "pixel out of {0,255} at " + x + "," + y + " = " + v);
+                assertTrue(
+                        v == 0 || v == 255, "pixel out of {0,255} at " + x + "," + y + " = " + v);
             }
         }
     }

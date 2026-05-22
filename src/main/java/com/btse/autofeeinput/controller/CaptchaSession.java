@@ -1,16 +1,14 @@
 package com.btse.autofeeinput.controller;
 
 import com.btse.autofeeinput.service.CaptchaUi;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 /**
- * One open captcha popup. The worker thread calls {@link #awaitCode()} per
- * attempt; the FX-thread CaptchaController feeds submissions/cancels in via
- * {@link #onSend(String)} / {@link #onCancel()}.
+ * One open captcha popup. The worker thread calls {@link #awaitCode()} per attempt; the FX-thread
+ * CaptchaController feeds submissions/cancels in via {@link #onSend(String)} / {@link #onCancel()}.
  */
 public class CaptchaSession implements CaptchaUi.Session {
 
@@ -50,9 +48,10 @@ public class CaptchaSession implements CaptchaUi.Session {
     @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {
-            Platform.runLater(() -> {
-                if (stage.isShowing()) stage.close();
-            });
+            Platform.runLater(
+                    () -> {
+                        if (stage.isShowing()) stage.close();
+                    });
         }
     }
 

@@ -2,15 +2,14 @@ package com.btse.autofeeinput.controller;
 
 import com.btse.autofeeinput.AppVersion;
 import com.btse.autofeeinput.service.OcrConfig;
+import java.util.ArrayList;
+import java.util.List;
 import javafx.beans.binding.BooleanBinding;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.stage.Stage;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class SettingsController {
 
@@ -47,9 +46,13 @@ public class SettingsController {
             String v = !usingDemoOnly && i < keys.size() ? keys.get(i) : "";
             fields.get(i).setText(v);
         }
-        locationLabel.setText("App version: v" + AppVersion.value()
-                + "\nSaved to: " + OcrConfig.userConfigPath()
-                + "\nActive source: " + current.apiKeySource());
+        locationLabel.setText(
+                "App version: v"
+                        + AppVersion.value()
+                        + "\nSaved to: "
+                        + OcrConfig.userConfigPath()
+                        + "\nActive source: "
+                        + current.apiKeySource());
         statusLabel.setText("");
     }
 
@@ -78,8 +81,16 @@ public class SettingsController {
 
     private List<PasswordField> keyFields() {
         List<PasswordField> list = new ArrayList<>(OcrConfig.MAX_API_KEYS);
-        list.add(apiKey1); list.add(apiKey2); list.add(apiKey3); list.add(apiKey4); list.add(apiKey5);
-        list.add(apiKey6); list.add(apiKey7); list.add(apiKey8); list.add(apiKey9); list.add(apiKey10);
+        list.add(apiKey1);
+        list.add(apiKey2);
+        list.add(apiKey3);
+        list.add(apiKey4);
+        list.add(apiKey5);
+        list.add(apiKey6);
+        list.add(apiKey7);
+        list.add(apiKey8);
+        list.add(apiKey9);
+        list.add(apiKey10);
         return list;
     }
 }

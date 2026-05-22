@@ -1,6 +1,5 @@
 package com.btse.autofeeinput.service;
 
-import javax.imageio.ImageIO;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -8,13 +7,14 @@ import java.awt.image.WritableRaster;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import javax.imageio.ImageIO;
 
 /**
- * Cheap captcha-image preprocessing to improve OCR success rate:
- * grayscale -> upscale -> Otsu binarization. Inverts the result if the
- * majority of pixels turn out to be dark (i.e. the original was light-on-dark).
+ * Cheap captcha-image preprocessing to improve OCR success rate: grayscale -> upscale -> Otsu
+ * binarization. Inverts the result if the majority of pixels turn out to be dark (i.e. the original
+ * was light-on-dark).
  *
- * Output is a PNG byte stream ready to upload.
+ * <p>Output is a PNG byte stream ready to upload.
  */
 public final class CaptchaImageProcessor {
 
@@ -37,8 +37,8 @@ public final class CaptchaImageProcessor {
     }
 
     private static BufferedImage toGrayscale(BufferedImage src) {
-        BufferedImage gray = new BufferedImage(src.getWidth(), src.getHeight(),
-                BufferedImage.TYPE_BYTE_GRAY);
+        BufferedImage gray =
+                new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
         Graphics2D g = gray.createGraphics();
         g.drawImage(src, 0, 0, null);
         g.dispose();
@@ -50,19 +50,17 @@ public final class CaptchaImageProcessor {
         int h = src.getHeight() * factor;
         BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_BYTE_GRAY);
         Graphics2D g = dst.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-        g.setRenderingHint(RenderingHints.KEY_RENDERING,
-                RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(
+                RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g.drawImage(src, 0, 0, w, h, null);
         g.dispose();
         return dst;
     }
 
     /**
-     * Otsu's method — picks the threshold that maximizes between-class variance.
-     * Output is TYPE_BYTE_GRAY with pixels {0, 255} for downstream tools that
-     * dislike BYTE_BINARY palettes.
+     * Otsu's method — picks the threshold that maximizes between-class variance. Output is
+     * TYPE_BYTE_GRAY with pixels {0, 255} for downstream tools that dislike BYTE_BINARY palettes.
      */
     private static BufferedImage otsuBinarize(BufferedImage gray) {
         int w = gray.getWidth();
@@ -111,8 +109,8 @@ public final class CaptchaImageProcessor {
     }
 
     /**
-     * If more pixels are dark (0) than light (255), invert — OCR engines
-     * expect dark text on a light background.
+     * If more pixels are dark (0) than light (255), invert — OCR engines expect dark text on a
+     * light background.
      */
     private static BufferedImage ensureDarkTextOnLightBg(BufferedImage binary) {
         int w = binary.getWidth();

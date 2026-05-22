@@ -1,8 +1,5 @@
 package com.btse.autofeeinput.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -10,10 +7,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Persists update-related user choices (currently: which version the user
- * asked to skip). Lives next to the OCR config under the same per-user dir.
+ * Persists update-related user choices (currently: which version the user asked to skip). Lives
+ * next to the OCR config under the same per-user dir.
  */
 public final class UpdatePrefs {
 
@@ -49,15 +48,17 @@ public final class UpdatePrefs {
         }
         if (os.contains("win")) {
             String appdata = System.getenv("APPDATA");
-            Path base = appdata != null && !appdata.isEmpty()
-                    ? Paths.get(appdata, "AutoFeeInput")
-                    : Paths.get(home, ".auto-fee-input");
+            Path base =
+                    appdata != null && !appdata.isEmpty()
+                            ? Paths.get(appdata, "AutoFeeInput")
+                            : Paths.get(home, ".auto-fee-input");
             return base.resolve(FILE_NAME);
         }
         String xdg = System.getenv("XDG_CONFIG_HOME");
-        Path base = xdg != null && !xdg.isEmpty()
-                ? Paths.get(xdg, "auto-fee-input")
-                : Paths.get(home, ".config", "auto-fee-input");
+        Path base =
+                xdg != null && !xdg.isEmpty()
+                        ? Paths.get(xdg, "auto-fee-input")
+                        : Paths.get(home, ".config", "auto-fee-input");
         return base.resolve(FILE_NAME);
     }
 

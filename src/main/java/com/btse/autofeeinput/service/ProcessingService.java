@@ -1,18 +1,16 @@
 package com.btse.autofeeinput.service;
 
 import com.btse.autofeeinput.model.SheetData;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
-
 /**
- * Drives the per-row API flow. Designed to be run on a background thread,
- * with Stop / Resume controlled by AtomicBoolean flags from the UI.
+ * Drives the per-row API flow. Designed to be run on a background thread, with Stop / Resume
+ * controlled by AtomicBoolean flags from the UI.
  *
- * Callbacks are invoked on the caller's thread; the main controller is
- * responsible for marshalling UI updates onto the FX thread.
+ * <p>Callbacks are invoked on the caller's thread; the main controller is responsible for
+ * marshalling UI updates onto the FX thread.
  */
 public class ProcessingService {
 
@@ -20,8 +18,11 @@ public class ProcessingService {
 
     public interface Listener {
         void onRowStart(int rowIndex, String keyword);
+
         void onRowDone(int rowIndex, String fee);
+
         void onRowError(int rowIndex, String keyword, String message);
+
         void log(String message);
     }
 
@@ -37,7 +38,8 @@ public class ProcessingService {
     private final Object pauseLock = new Object();
     private volatile int currentRow = 0;
 
-    public ProcessingService(SheetData data, int queryCol, int feeCol, CaptchaUi captcha, Listener listener) {
+    public ProcessingService(
+            SheetData data, int queryCol, int feeCol, CaptchaUi captcha, Listener listener) {
         this.data = data;
         this.queryCol = queryCol;
         this.feeCol = feeCol;
@@ -137,13 +139,17 @@ public class ProcessingService {
             byte[] image = client.step5DownloadCaptcha();
             checkStop();
 
-            CaptchaUi.Session session = captcha.open(keyword, image, () -> {
-                try {
-                    return client.step5DownloadCaptcha();
-                } catch (Exception e) {
-                    return new byte[0];
-                }
-            });
+            CaptchaUi.Session session =
+                    captcha.open(
+                            keyword,
+                            image,
+                            () -> {
+                                try {
+                                    return client.step5DownloadCaptcha();
+                                } catch (Exception e) {
+                                    return new byte[0];
+                                }
+                            });
             try {
                 int attempt = 1;
                 while (true) {

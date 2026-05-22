@@ -1,12 +1,11 @@
 package com.btse.autofeeinput.service;
 
-import org.junit.jupiter.api.Test;
-
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Optional;
+import org.junit.jupiter.api.Test;
 
 class UpdateCheckerTest {
 
@@ -42,11 +41,12 @@ class UpdateCheckerTest {
 
     @Test
     void parse_extractsTagAndFirstHtmlUrl() {
-        String json = "{"
-                + "\"tag_name\":\"v1.3.1\","
-                + "\"html_url\":\"https://github.com/foo/bar/releases/tag/v1.3.1\","
-                + "\"assets\":[{\"html_url\":\"https://example/asset.exe\"}]"
-                + "}";
+        String json =
+                "{"
+                        + "\"tag_name\":\"v1.3.1\","
+                        + "\"html_url\":\"https://github.com/foo/bar/releases/tag/v1.3.1\","
+                        + "\"assets\":[{\"html_url\":\"https://example/asset.exe\"}]"
+                        + "}";
         Optional<UpdateChecker.Release> rel = UpdateChecker.parse(json);
         assertTrue(rel.isPresent());
         assertEquals("v1.3.1", rel.get().tagName);

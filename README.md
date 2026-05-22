@@ -1,6 +1,6 @@
 # Auto Fee Input
 
-**Current release: v1.4.0** — see the
+**Current release: v1.4.1** — see the
 [Releases page](https://github.com/shan-xi/auto_fee_input/releases) for
 binaries and changelog.
 
@@ -18,11 +18,11 @@ configured; otherwise the popup lets you type the code by hand.
 Grab the latest release from the
 [**Releases page**](../../releases/latest).
 
-| Platform | File | Notes |
-|---|---|---|
-| Windows 10/11 | `AutoFeeInput-1.4.0-windows-portable.zip` | **Recommended.** Extract, run `AutoFeeInput.exe`. No installer prompt. |
-| Windows 10/11 | `AutoFeeInput-1.4.0.exe` | Installer with Start Menu + Desktop shortcut. SmartScreen will warn — see below. |
-| macOS (Apple Silicon) | `AutoFeeInput-1.4.0.dmg` | Drag to Applications. Ad-hoc signed; Gatekeeper still asks once — see below. |
+| Platform | File                                      | Notes |
+|---|-------------------------------------------|---|
+| Windows 10/11 | `AutoFeeInput-1.4.1-windows-portable.zip` | **Recommended.** Extract, run `AutoFeeInput.exe`. No installer prompt. |
+| Windows 10/11 | `AutoFeeInput-1.4.1.exe`                  | Installer with Start Menu + Desktop shortcut. SmartScreen will warn — see below. |
+| macOS (Apple Silicon) | `AutoFeeInput-1.4.1.dmg`                  | Drag to Applications. Ad-hoc signed; Gatekeeper still asks once — see below. |
 
 Every artifact ships with a matching `.sha256` checksum file. Verify
 with `shasum -a 256 -c …sha256` (macOS / Linux) or `Get-FileHash` (Windows).
@@ -37,7 +37,7 @@ SmartScreen will warn about the unsigned installer.
 
 ### Option A — Portable zip (no warnings, recommended)
 
-1. Download `AutoFeeInput-1.4.0-windows-portable.zip`.
+1. Download `AutoFeeInput-1.4.1-windows-portable.zip`.
 2. Right-click the zip → **Properties** → tick **Unblock** → OK.
    (This clears the "Mark of the Web" flag the browser added.)
 3. Extract anywhere — e.g. `C:\Tools\AutoFeeInput`.
@@ -45,7 +45,7 @@ SmartScreen will warn about the unsigned installer.
 
 ### Option B — `.exe` installer
 
-1. Download `AutoFeeInput-1.4.0.exe`.
+1. Download `AutoFeeInput-1.4.1.exe`.
 2. Double-click. Windows shows **"Windows protected your PC"**.
 3. Click **More info**, then **Run anyway**.
 4. Follow the installer — default install path is
@@ -179,7 +179,7 @@ mvn clean javafx:run
 ### Fat jar
 ```bash
 mvn clean package
-java -jar target/auto-fee-input-1.4.0.jar
+java -jar target/auto-fee-input-1.4.1.jar
 ```
 
 ### Native installers

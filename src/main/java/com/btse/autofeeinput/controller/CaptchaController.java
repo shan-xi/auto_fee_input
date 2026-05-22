@@ -1,6 +1,8 @@
 package com.btse.autofeeinput.controller;
 
 import com.btse.autofeeinput.service.OcrService;
+import java.io.ByteArrayInputStream;
+import java.util.function.Supplier;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
@@ -10,9 +12,6 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayInputStream;
-import java.util.function.Supplier;
 
 public class CaptchaController {
 
@@ -29,13 +28,16 @@ public class CaptchaController {
     private CaptchaSession session;
     private Supplier<byte[]> refresher;
     private OcrService ocr;
+
     /** Monotonic id; result callbacks ignore stale OCR runs (image refreshed since). */
     private int ocrRequestSeq = 0;
+
     private boolean autoSubmit = true;
     private int autoAttempt = 0;
     private int emptyOcrRetries = 0;
 
-    public void init(String keyword, byte[] initialImage, Supplier<byte[]> refresher, OcrService ocr) {
+    public void init(
+            String keyword, byte[] initialImage, Supplier<byte[]> refresher, OcrService ocr) {
         this.refresher = refresher;
         this.ocr = ocr;
         keywordLabel.setText(keyword);
@@ -65,18 +67,22 @@ public class CaptchaController {
     @FXML
     private void onRefresh() {
         if (refresher == null) return;
-        new Thread(() -> {
-            byte[] fresh;
-            try {
-                fresh = refresher.get();
-            } catch (Exception e) {
-                return;
-            }
-            Platform.runLater(() -> {
-                setImage(fresh);
-                triggerOcr(fresh);
-            });
-        }, "captcha-refresh").start();
+        new Thread(
+                        () -> {
+                            byte[] fresh;
+                            try {
+                                fresh = refresher.get();
+                            } catch (Exception e) {
+                                return;
+                            }
+                            Platform.runLater(
+                                    () -> {
+                                        setImage(fresh);
+                                        triggerOcr(fresh);
+                                    });
+                        },
+                        "captcha-refresh")
+                .start();
     }
 
     @FXML
@@ -100,8 +106,8 @@ public class CaptchaController {
     }
 
     /**
-     * Fire-and-forget OCR call. Pre-fills field on success, leaves blank on
-     * error / timeout. Stale results (image refreshed in between) are dropped.
+     * Fire-and-forget OCR call. Pre-fills field on success, leaves blank on error / timeout. Stale
+     * results (image refreshed in between) are dropped.
      */
     private void triggerOcr(byte[] image) {
         if (ocr == null || image == null || image.length == 0) {
@@ -117,8 +123,9 @@ public class CaptchaController {
         errorLabel.setStyle("-fx-text-fill: #2b6cb0;");
         errorLabel.setText("辨識中... Recognizing...");
 
-        ocr.recognize(image, OCR_TIMEOUT_MS).whenComplete((text, ex) ->
-                Platform.runLater(() -> applyOcrResult(reqId, text, ex)));
+        ocr.recognize(image, OCR_TIMEOUT_MS)
+                .whenComplete(
+                        (text, ex) -> Platform.runLater(() -> applyOcrResult(reqId, text, ex)));
     }
 
     private void applyOcrResult(int reqId, String text, Throwable ex) {
@@ -137,8 +144,12 @@ public class CaptchaController {
             if (autoSubmit && emptyOcrRetries < MAX_EMPTY_OCR_RETRIES) {
                 emptyOcrRetries++;
                 errorLabel.setStyle("-fx-text-fill: #2b6cb0;");
-                errorLabel.setText("OCR empty — refreshing (" + emptyOcrRetries
-                        + "/" + MAX_EMPTY_OCR_RETRIES + ")");
+                errorLabel.setText(
+                        "OCR empty — refreshing ("
+                                + emptyOcrRetries
+                                + "/"
+                                + MAX_EMPTY_OCR_RETRIES
+                                + ")");
                 onRefresh();
                 return;
             }

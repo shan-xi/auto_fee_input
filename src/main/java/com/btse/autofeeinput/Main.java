@@ -1,12 +1,11 @@
 package com.btse.autofeeinput;
 
+import java.security.Security;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-
-import java.security.Security;
 
 public class Main extends Application {
 
@@ -15,7 +14,8 @@ public class Main extends Application {
         // by default. jdk.tls.disabledAlgorithms is JVM-global, so re-enable
         // only those two; keep DES, 3DES, anon, NULL, RC4 and small keys
         // disabled. Must run before any SSL context is created.
-        Security.setProperty("jdk.tls.disabledAlgorithms",
+        Security.setProperty(
+                "jdk.tls.disabledAlgorithms",
                 "SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, "
                         + "EC keySize < 224, 3DES_EDE_CBC, anon, NULL, "
                         + "include jdk.disabled.namedCurves");

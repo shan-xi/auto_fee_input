@@ -1,15 +1,14 @@
 package com.btse.autofeeinput.service;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class ExcelServiceTest {
 
@@ -23,7 +22,7 @@ class ExcelServiceTest {
     @Test
     void detectCharset_returnsUtf8ForBomFile(@TempDir Path dir) throws Exception {
         File f = dir.resolve("bom.csv").toFile();
-        byte[] bom = { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF };
+        byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
         byte[] body = "header\n1\n".getBytes(StandardCharsets.UTF_8);
         byte[] all = new byte[bom.length + body.length];
         System.arraycopy(bom, 0, all, 0, bom.length);

@@ -1,9 +1,9 @@
 package com.btse.autofeeinput.service;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
 
 class OcrConfigTest {
 
@@ -17,7 +17,8 @@ class OcrConfigTest {
 
     @Test
     void userConfigPath_returnsAbsolutePath() {
-        assertTrue(OcrConfig.userConfigPath().isAbsolute(),
+        assertTrue(
+                OcrConfig.userConfigPath().isAbsolute(),
                 "user config path should be absolute on every platform");
     }
 }

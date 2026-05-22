@@ -3,12 +3,6 @@ package com.btse.autofeeinput.service;
 import com.btse.autofeeinput.model.SheetData;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
@@ -18,10 +12,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
-/**
- * Reads csv / xls / xlsx into a SheetData. Writes processed data back to xlsx.
- */
+/** Reads csv / xls / xlsx into a SheetData. Writes processed data back to xlsx. */
 public class ExcelService {
 
     public SheetData read(File file) throws IOException {
@@ -38,7 +35,7 @@ public class ExcelService {
         SheetData data = new SheetData();
         Charset cs = detectCharset(file);
         try (Reader reader = new InputStreamReader(new FileInputStream(file), cs);
-             CSVReader csv = new CSVReader(reader)) {
+                CSVReader csv = new CSVReader(reader)) {
             List<String[]> all = csv.readAll();
             if (all.isEmpty()) return data;
             String[] header = all.get(0);
@@ -58,10 +55,10 @@ public class ExcelService {
     }
 
     /**
-     * UTF-8 BOM → UTF-8. Otherwise try strict UTF-8 decode of the whole file;
-     * if any byte sequence is invalid, fall back to MS950 (Big5 superset used
-     * by Excel on zh-TW). This handles Big5/MS950 CSVs that are common in
-     * Taiwan-government data without needing a charset-detection library.
+     * UTF-8 BOM → UTF-8. Otherwise try strict UTF-8 decode of the whole file; if any byte sequence
+     * is invalid, fall back to MS950 (Big5 superset used by Excel on zh-TW). This handles
+     * Big5/MS950 CSVs that are common in Taiwan-government data without needing a charset-detection
+     * library.
      */
     static Charset detectCharset(File file) {
         byte[] bytes;
@@ -76,9 +73,11 @@ public class ExcelService {
                 && (bytes[2] & 0xFF) == 0xBF) {
             return StandardCharsets.UTF_8;
         }
-        CharsetDecoder dec = StandardCharsets.UTF_8.newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT);
+        CharsetDecoder dec =
+                StandardCharsets.UTF_8
+                        .newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT);
         try {
             dec.decode(java.nio.ByteBuffer.wrap(bytes));
             return StandardCharsets.UTF_8;
@@ -94,9 +93,10 @@ public class ExcelService {
     private SheetData readExcel(File file) throws IOException {
         SheetData data = new SheetData();
         try (InputStream in = new FileInputStream(file);
-             Workbook wb = file.getName().toLowerCase(Locale.ROOT).endsWith(".xls")
-                     ? new HSSFWorkbook(in)
-                     : new XSSFWorkbook(in)) {
+                Workbook wb =
+                        file.getName().toLowerCase(Locale.ROOT).endsWith(".xls")
+                                ? new HSSFWorkbook(in)
+                                : new XSSFWorkbook(in)) {
             Sheet sheet = wb.getSheetAt(0);
             if (sheet == null) return data;
             DataFormatter fmt = new DataFormatter();

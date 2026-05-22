@@ -1,8 +1,8 @@
 package com.btse.autofeeinput.service;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
 
 class OcrServiceTest {
 
@@ -32,14 +32,16 @@ class OcrServiceTest {
 
     @Test
     void isRateLimit_recognisesCommonPhrasings() {
-        org.junit.jupiter.api.Assertions.assertTrue(OcrService.isRateLimit(
-                new java.io.IOException("HTTP 403: Rate Limit Exceeded")));
-        org.junit.jupiter.api.Assertions.assertTrue(OcrService.isRateLimit(
-                new java.io.IOException("API error: You may upload only a limited number of pages, daily limit reached")));
-        org.junit.jupiter.api.Assertions.assertTrue(OcrService.isRateLimit(
-                new java.io.IOException("HTTP 429: Too Many Requests")));
-        org.junit.jupiter.api.Assertions.assertFalse(OcrService.isRateLimit(
-                new java.io.IOException("HTTP 500: Server Error")));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                OcrService.isRateLimit(new java.io.IOException("HTTP 403: Rate Limit Exceeded")));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                OcrService.isRateLimit(
+                        new java.io.IOException(
+                                "API error: You may upload only a limited number of pages, daily limit reached")));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                OcrService.isRateLimit(new java.io.IOException("HTTP 429: Too Many Requests")));
+        org.junit.jupiter.api.Assertions.assertFalse(
+                OcrService.isRateLimit(new java.io.IOException("HTTP 500: Server Error")));
         org.junit.jupiter.api.Assertions.assertFalse(OcrService.isRateLimit(null));
     }
 }

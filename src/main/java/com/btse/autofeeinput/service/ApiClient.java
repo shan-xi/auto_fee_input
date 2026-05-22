@@ -1,5 +1,10 @@
 package com.btse.autofeeinput.service;
 
+import java.io.Closeable;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.config.RequestConfig;
@@ -19,8 +24,8 @@ import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.apache.hc.core5.http.message.BasicNameValuePair;
-import org.apache.hc.core5.net.URLEncodedUtils;
 import org.apache.hc.core5.http.ssl.TLS;
+import org.apache.hc.core5.net.URLEncodedUtils;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.apache.hc.core5.ssl.TrustStrategy;
 import org.jsoup.Jsoup;
@@ -30,17 +35,11 @@ import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Per-row session client for ap.ece.moe.edu.tw fee lookup flow.
  *
- * Each new ApiClient owns its own CookieStore so ASP.NET_SessionId / TS01c66436
- * stay isolated between rows. Reuse one instance across all six steps of a row.
+ * <p>Each new ApiClient owns its own CookieStore so ASP.NET_SessionId / TS01c66436 stay isolated
+ * between rows. Reuse one instance across all six steps of a row.
  */
 public class ApiClient implements Closeable {
 
@@ -58,35 +57,39 @@ public class ApiClient implements Closeable {
     private final CloseableHttpClient http;
 
     public ApiClient() {
-        RequestConfig cfg = RequestConfig.custom()
-                .setConnectTimeout(org.apache.hc.core5.util.Timeout.ofSeconds(20))
-                .setResponseTimeout(org.apache.hc.core5.util.Timeout.ofSeconds(30))
-                .setRedirectsEnabled(true)
-                .build();
-        PoolingHttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
-                .setSSLSocketFactory(trustAllSslSocketFactory())
-                .build();
-        this.http = HttpClients.custom()
-                .setConnectionManager(cm)
-                .setDefaultCookieStore(cookieStore)
-                .setDefaultRequestConfig(cfg)
-                .setUserAgent(USER_AGENT)
-                .build();
+        RequestConfig cfg =
+                RequestConfig.custom()
+                        .setConnectTimeout(org.apache.hc.core5.util.Timeout.ofSeconds(20))
+                        .setResponseTimeout(org.apache.hc.core5.util.Timeout.ofSeconds(30))
+                        .setRedirectsEnabled(true)
+                        .build();
+        PoolingHttpClientConnectionManager cm =
+                PoolingHttpClientConnectionManagerBuilder.create()
+                        .setSSLSocketFactory(trustAllSslSocketFactory())
+                        .build();
+        this.http =
+                HttpClients.custom()
+                        .setConnectionManager(cm)
+                        .setDefaultCookieStore(cookieStore)
+                        .setDefaultRequestConfig(cfg)
+                        .setUserAgent(USER_AGENT)
+                        .build();
         this.context.setCookieStore(cookieStore);
     }
 
     /**
-     * ap.ece.moe.edu.tw ships an incomplete cert chain that the default JVM
-     * truststore can't validate. Single-host scraper — accept any cert.
+     * ap.ece.moe.edu.tw ships an incomplete cert chain that the default JVM truststore can't
+     * validate. Single-host scraper — accept any cert.
      */
     private static SSLConnectionSocketFactory trustAllSslSocketFactory() {
-        log.warn("ApiClient: cert validation and hostname verification are disabled "
-                + "for {} — connections are not MITM-protected", BASE);
+        log.warn(
+                "ApiClient: cert validation and hostname verification are disabled "
+                        + "for {} — connections are not MITM-protected",
+                BASE);
         try {
             TrustStrategy trustAll = (chain, authType) -> true;
-            javax.net.ssl.SSLContext ctx = SSLContextBuilder.create()
-                    .loadTrustMaterial(null, trustAll)
-                    .build();
+            javax.net.ssl.SSLContext ctx =
+                    SSLContextBuilder.create().loadTrustMaterial(null, trustAll).build();
             return SSLConnectionSocketFactoryBuilder.create()
                     .setSslContext(ctx)
                     .setTlsVersions(TLS.V_1_0, TLS.V_1_1, TLS.V_1_2, TLS.V_1_3)
@@ -106,7 +109,8 @@ public class ApiClient implements Closeable {
         public FormState(String viewState, String eventValidation, String viewStateGenerator) {
             this.viewState = viewState;
             this.eventValidation = eventValidation;
-            this.viewStateGenerator = viewStateGenerator == null ? VIEW_STATE_GENERATOR : viewStateGenerator;
+            this.viewStateGenerator =
+                    viewStateGenerator == null ? VIEW_STATE_GENERATOR : viewStateGenerator;
         }
     }
 
@@ -168,8 +172,8 @@ public class ApiClient implements Closeable {
     }
 
     /**
-     * Step 6: submit captcha. Returns the raw HTML of the result page —
-     * caller passes it to {@link #parseTuitionFee(String)}.
+     * Step 6: submit captcha. Returns the raw HTML of the result page — caller passes it to {@link
+     * #parseTuitionFee(String)}.
      */
     public String step6Submit(String keyword, String captcha, FormState prev) throws IOException {
         List<NameValuePair> form = new ArrayList<>();
@@ -199,17 +203,12 @@ public class ApiClient implements Closeable {
         }
     }
 
-    private static final List<String> FEE_ROW_LABELS = List.of(
-            "上學期計6個月", "全學期總收費", "總計");
+    private static final List<String> FEE_ROW_LABELS = List.of("上學期計6個月", "全學期總收費", "總計");
 
     /**
-     * Extracts the 學費 amount from the 收費明細 page.
-     * Scans every table for the first row labelled 上學期計 6 個月,
-     * 全學期總收費, or 總計, then reads its 半日班 / 全日班 values.
-     * Output formats:
-     *   both classes present → "學費 半日班X/全日班Y"
-     *   only 全日班           → "學費 全日班Y"
-     *   only 半日班           → "學費 半日班X"
+     * Extracts the 學費 amount from the 收費明細 page. Scans every table for the first row labelled 上學期計
+     * 6 個月, 全學期總收費, or 總計, then reads its 半日班 / 全日班 values. Output formats: both classes present →
+     * "學費 半日班X/全日班Y" only 全日班 → "學費 全日班Y" only 半日班 → "學費 半日班X"
      */
     public static String parseTuitionFee(String html) {
         Document doc = Jsoup.parse(html);
@@ -267,7 +266,8 @@ public class ApiClient implements Closeable {
             boolean hasFull = hasAmount(full);
 
             if (log.isInfoEnabled()) {
-                log.info("parseTuitionFee: matched row '{}' half='{}' full='{}'", label, half, full);
+                log.info(
+                        "parseTuitionFee: matched row '{}' half='{}' full='{}'", label, half, full);
             }
             if (hasHalf && hasFull) return "學費 半日班" + half + "/全日班" + full;
             if (hasFull) return "學費 全日班" + full;
@@ -284,9 +284,8 @@ public class ApiClient implements Closeable {
     }
 
     /**
-     * Walks header rows (top-down) and resolves the column ranges occupied by
-     * 半日班 and 全日班 headers. Honours colspan so multi-column class headers
-     * still produce the right [start, end) range.
+     * Walks header rows (top-down) and resolves the column ranges occupied by 半日班 and 全日班 headers.
+     * Honours colspan so multi-column class headers still produce the right [start, end) range.
      */
     private static void findClassColumnRanges(Elements rows, int[] halfOut, int[] fullOut) {
         for (Element row : rows) {
@@ -350,7 +349,8 @@ public class ApiClient implements Closeable {
         return s.replace(' ', ' ').replaceAll("\\s+", "").trim();
     }
 
-    private FormState postForm(String url, List<NameValuePair> form, String tag) throws IOException {
+    private FormState postForm(String url, List<NameValuePair> form, String tag)
+            throws IOException {
         HttpPost req = new HttpPost(url);
         req.setEntity(formEntity(form));
         req.addHeader("Referer", url);
@@ -359,11 +359,16 @@ public class ApiClient implements Closeable {
 
     private StringEntity formEntity(List<NameValuePair> form) {
         String body = URLEncodedUtils.format(form, StandardCharsets.UTF_8);
-        return new StringEntity(body, ContentType.APPLICATION_FORM_URLENCODED.withCharset(StandardCharsets.UTF_8));
+        return new StringEntity(
+                body, ContentType.APPLICATION_FORM_URLENCODED.withCharset(StandardCharsets.UTF_8));
     }
 
-    private FormState execAndParse(org.apache.hc.core5.http.ClassicHttpRequest req, String tag) throws IOException {
-        try (CloseableHttpResponse resp = http.execute((org.apache.hc.client5.http.classic.methods.HttpUriRequestBase) req, context)) {
+    private FormState execAndParse(org.apache.hc.core5.http.ClassicHttpRequest req, String tag)
+            throws IOException {
+        try (CloseableHttpResponse resp =
+                http.execute(
+                        (org.apache.hc.client5.http.classic.methods.HttpUriRequestBase) req,
+                        context)) {
             int code = resp.getCode();
             String body = EntityUtils.toString(resp.getEntity(), StandardCharsets.UTF_8);
             if (code != 200) {
@@ -385,8 +390,8 @@ public class ApiClient implements Closeable {
     }
 
     /**
-     * True when the response page is still asking for a captcha — i.e. the
-     * submitted code was wrong and the user should try again.
+     * True when the response page is still asking for a captcha — i.e. the submitted code was wrong
+     * and the user should try again.
      */
     public static boolean isCaptchaStillRequired(String html) {
         Document doc = Jsoup.parse(html);
